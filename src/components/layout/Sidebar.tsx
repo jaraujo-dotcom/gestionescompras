@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, ClipboardCheck, Settings, Users, LayoutDashboard, PlayCircle, LogOut, ChevronLeft, ChevronRight, Bell, BellRing, ChevronDown, ShieldCheck } from 'lucide-react';
+import { FileText, ClipboardCheck, Settings, Users, LayoutDashboard, PlayCircle, LogOut, ChevronLeft, ChevronRight, Bell, BellRing, ChevronDown, ShieldCheck, Users2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -48,6 +48,10 @@ export function Sidebar() {
     name: 'Usuarios',
     href: '/admin/users',
     icon: Users
+  }, {
+    name: 'Grupos',
+    href: '/admin/groups',
+    icon: Users2
   }, {
     name: 'Formularios',
     href: '/admin/templates',

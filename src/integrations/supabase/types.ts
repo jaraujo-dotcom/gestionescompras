@@ -154,6 +154,30 @@ export type Database = {
         }
         Relationships: []
       }
+      groups: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_configs: {
         Row: {
           channel_email: boolean
@@ -471,6 +495,7 @@ export type Database = {
           created_at: string
           created_by: string
           data_json: Json
+          group_id: string | null
           id: string
           request_number: number
           status: Database["public"]["Enums"]["request_status"]
@@ -482,6 +507,7 @@ export type Database = {
           created_at?: string
           created_by: string
           data_json?: Json
+          group_id?: string | null
           id?: string
           request_number?: number
           status?: Database["public"]["Enums"]["request_status"]
@@ -493,6 +519,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           data_json?: Json
+          group_id?: string | null
           id?: string
           request_number?: number
           status?: Database["public"]["Enums"]["request_status"]
@@ -502,10 +529,46 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "requests_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "requests_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_groups: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_groups_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
             referencedColumns: ["id"]
           },
         ]
@@ -556,6 +619,7 @@ export type Database = {
           name: string
         }[]
       }
+      get_user_group_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_roles: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"][]
@@ -565,6 +629,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      user_in_group: {
+        Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
     }
