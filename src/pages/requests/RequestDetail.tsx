@@ -19,7 +19,7 @@ import {
   TableColumnSchema,
   STATUS_LABELS,
 } from '@/types/database';
-import { ArrowLeft, Edit, Send, Loader2, Clock, User, MessageSquare, Trash2, Ban, FileSpreadsheet } from 'lucide-react';
+import { ArrowLeft, Edit, Send, Loader2, Clock, User, MessageSquare, Trash2, Ban, FileSpreadsheet, Users2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdminStatusChanger } from '@/components/requests/AdminStatusChanger';
 import { exportToExcel } from '@/lib/exportRequest';
@@ -48,6 +48,7 @@ export default function RequestDetail() {
   const [request, setRequest] = useState<Request | null>(null);
   const [creator, setCreator] = useState<Profile | null>(null);
   const [template, setTemplate] = useState<FormTemplate | null>(null);
+  const [groupName, setGroupName] = useState<string | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
   const [sections, setSections] = useState<FormSection[]>([]);
   const [history, setHistory] = useState<(RequestStatusHistory & { profile?: Profile })[]>([]);
@@ -73,6 +74,14 @@ export default function RequestDetail() {
       const { data: creatorProfiles } = await supabase.rpc('get_profiles_by_ids', { _ids: [req.created_by] });
       if (creatorProfiles && creatorProfiles.length > 0) {
         setCreator({ ...creatorProfiles[0], email: '', created_at: '', updated_at: '' } as Profile);
+      }
+
+      // Fetch group name
+      if ((req as any).group_id) {
+        const { data: grpData } = await supabase.from('groups').select('name').eq('id', (req as any).group_id).single();
+        if (grpData) setGroupName(grpData.name);
+      } else {
+        setGroupName(null);
       }
 
       // Fetch template and fields if exists
@@ -265,6 +274,9 @@ export default function RequestDetail() {
             </div>
             <p className="text-muted-foreground">
               {template?.name && <span className="mr-2">• {template.name}</span>}
+              {groupName && (
+                <span className="mr-2 inline-flex items-center gap-1">• <Users2 className="w-3 h-3" /> {groupName}</span>
+              )}
               Solicitante: {creator?.name || 'Desconocido'} • Creada: {new Date(request.created_at).toLocaleDateString('es-ES', {
                 day: '2-digit', month: 'long', year: 'numeric',
               })}

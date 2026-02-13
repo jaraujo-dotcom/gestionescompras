@@ -22,7 +22,7 @@ import {
   STATUS_LABELS,
 } from '@/types/database';
 import {
-  ArrowLeft, PlayCircle, CheckCheck, Loader2, Clock, User, MessageSquare, PauseCircle, FileSpreadsheet,
+  ArrowLeft, PlayCircle, CheckCheck, Loader2, Clock, User, MessageSquare, PauseCircle, FileSpreadsheet, Users2,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -46,6 +46,7 @@ export default function ExecutionDetail() {
   const [request, setRequest] = useState<Request | null>(null);
   const [creator, setCreator] = useState<Profile | null>(null);
   const [template, setTemplate] = useState<FormTemplate | null>(null);
+  const [groupName, setGroupName] = useState<string | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
   const [sections, setSections] = useState<FormSection[]>([]);
   const [history, setHistory] = useState<(RequestStatusHistory & { profile?: Profile })[]>([]);
@@ -69,6 +70,14 @@ export default function ExecutionDetail() {
       const { data: creatorProfiles } = await supabase.rpc('get_profiles_by_ids', { _ids: [req.created_by] });
       if (creatorProfiles && creatorProfiles.length > 0) {
         setCreator({ ...creatorProfiles[0], email: '', created_at: '', updated_at: '' } as Profile);
+      }
+
+      // Fetch group name
+      if ((req as any).group_id) {
+        const { data: grpData } = await supabase.from('groups').select('name').eq('id', (req as any).group_id).single();
+        if (grpData) setGroupName(grpData.name);
+      } else {
+        setGroupName(null);
       }
 
       if (req.template_id) {
@@ -238,6 +247,9 @@ export default function ExecutionDetail() {
             </div>
             <p className="text-muted-foreground">
               {template?.name && <span className="mr-2">• {template.name}</span>}
+              {groupName && (
+                <span className="mr-2 inline-flex items-center gap-1">• <Users2 className="w-3 h-3" /> {groupName}</span>
+              )}
               Solicitante: {creator?.name || 'Desconocido'}
             </p>
           </div>
