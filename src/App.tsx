@@ -26,6 +26,9 @@ import NotFound from "./pages/NotFound";
 import NotificationsList from "./pages/notifications/NotificationsList";
 import NotificationSettings from "./pages/admin/NotificationSettings";
 import GroupsList from "./pages/admin/GroupsList";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import ChangePassword from "./pages/ChangePassword";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +44,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Protected routes */}
             <Route element={<AppLayout />}>
@@ -67,6 +72,7 @@ const App = () => (
               <Route path="/admin/templates/:id" element={<TemplateEditor />} />
               <Route path="/admin/notifications" element={<NotificationSettings />} />
               <Route path="/admin/groups" element={<GroupsList />} />
+              <Route path="/change-password" element={<ChangePassword />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
