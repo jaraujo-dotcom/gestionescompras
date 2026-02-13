@@ -21,14 +21,42 @@ export default function RequestsList() {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      // Fetch own requests
+      const { data: ownData, error: ownError } = await supabase
         .from('requests')
         .select('*')
         .eq('created_by', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setRequests(data as Request[]);
+      if (ownError) throw ownError;
+
+      // Fetch group requests
+      const { data: groupIds } = await supabase
+        .from('user_groups')
+        .select('group_id')
+        .eq('user_id', user.id);
+
+      let groupData: Request[] = [];
+      if (groupIds && groupIds.length > 0) {
+        const gIds = groupIds.map((g) => g.group_id);
+        const { data, error } = await supabase
+          .from('requests')
+          .select('*')
+          .in('group_id', gIds)
+          .neq('created_by', user.id)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        groupData = (data || []) as Request[];
+      }
+
+      // Merge and deduplicate
+      const allMap = new Map<string, Request>();
+      for (const r of (ownData || []) as Request[]) allMap.set(r.id, r);
+      for (const r of groupData) allMap.set(r.id, r);
+      const all = Array.from(allMap.values()).sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setRequests(all);
     } catch (error) {
       console.error('Error fetching requests:', error);
     } finally {
@@ -48,8 +76,8 @@ export default function RequestsList() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Mis Solicitudes</h1>
-          <p className="text-muted-foreground">Gestione sus solicitudes de artículos</p>
+          <h1 className="text-2xl font-bold">Solicitudes</h1>
+          <p className="text-muted-foreground">Sus solicitudes y las de su grupo</p>
         </div>
         <Link to="/requests/new">
           <Button>
