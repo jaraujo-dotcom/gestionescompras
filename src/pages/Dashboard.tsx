@@ -96,7 +96,6 @@ export default function Dashboard() {
           .from('requests')
           .select('*, form_templates(name)')
           .in('group_id', userGroupIds)
-          .neq('created_by', user.id)
           .order('created_at', { ascending: false })
           .limit(20);
 
