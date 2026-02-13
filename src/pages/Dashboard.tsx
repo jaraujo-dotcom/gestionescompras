@@ -6,23 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { RequestStatus, Request, STATUS_LABELS } from '@/types/database';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { RequestFilters, RequestFilterValues, defaultFilters } from '@/components/filters/RequestFilters';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  FileText,
-  Plus,
-  ClipboardCheck,
-  PlayCircle,
-  Eye,
-  Loader2,
-  Filter,
-  Users2,
+  FileText, Plus, ClipboardCheck, PlayCircle, Eye, Loader2, Users2,
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -33,24 +20,15 @@ interface DashboardStats {
   groupRequests: number;
 }
 
-const ALL_STATUSES: RequestStatus[] = [
-  'borrador', 'en_revision', 'devuelta', 'aprobada',
-  'en_ejecucion', 'en_espera', 'completada', 'rechazada', 'anulada',
-];
-
 export default function Dashboard() {
   const { profile, hasRole, user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
-    myRequests: 0,
-    pendingReview: 0,
-    pendingExecution: 0,
-    inExecution: 0,
-    groupRequests: 0,
+    myRequests: 0, pendingReview: 0, pendingExecution: 0, inExecution: 0, groupRequests: 0,
   });
   const [recentRequests, setRecentRequests] = useState<Request[]>([]);
   const [groupRequests, setGroupRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [filters, setFilters] = useState<RequestFilterValues>(defaultFilters);
   const [userGroupIds, setUserGroupIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('all');
 
@@ -60,49 +38,40 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [statusFilter, userGroupIds]);
+  }, [filters, userGroupIds]);
 
   const fetchUserGroups = async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from('user_groups')
-      .select('group_id')
-      .eq('user_id', user.id);
-    if (data) {
-      setUserGroupIds(data.map((d) => d.group_id));
+    const { data } = await supabase.from('user_groups').select('group_id').eq('user_id', user.id);
+    if (data) setUserGroupIds(data.map((d) => d.group_id));
+  };
+
+  const applyFilters = (query: any) => {
+    if (filters.status !== 'all') query = query.eq('status', filters.status);
+    if (filters.groupId !== 'all') query = query.eq('group_id', filters.groupId);
+    if (filters.templateId !== 'all') query = query.eq('template_id', filters.templateId);
+    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom.toISOString());
+    if (filters.dateTo) {
+      const end = new Date(filters.dateTo);
+      end.setHours(23, 59, 59, 999);
+      query = query.lte('created_at', end.toISOString());
     }
+    return query;
   };
 
   const fetchDashboardData = async () => {
     if (!user) return;
     try {
-      let query = supabase
-        .from('requests')
-        .select('*, form_templates(name), groups(name)')
-        .order('created_at', { ascending: false });
-
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter as RequestStatus);
-      }
-
-      query = query.limit(20);
-
+      let query = supabase.from('requests').select('*, form_templates(name), groups(name)')
+        .order('created_at', { ascending: false }).limit(50);
+      query = applyFilters(query);
       const { data: requests } = await query;
 
-      // Fetch group requests separately
       let grpReqs: Request[] = [];
       if (userGroupIds.length > 0) {
-        let grpQuery = supabase
-          .from('requests')
-          .select('*, form_templates(name), groups(name)')
-          .in('group_id', userGroupIds)
-          .order('created_at', { ascending: false })
-          .limit(20);
-
-        if (statusFilter !== 'all') {
-          grpQuery = grpQuery.eq('status', statusFilter as RequestStatus);
-        }
-
+        let grpQuery = supabase.from('requests').select('*, form_templates(name), groups(name)')
+          .in('group_id', userGroupIds).order('created_at', { ascending: false }).limit(50);
+        grpQuery = applyFilters(grpQuery);
         const { data: grpData } = await grpQuery;
         grpReqs = (grpData || []) as Request[];
       }
@@ -110,8 +79,8 @@ export default function Dashboard() {
       if (requests) {
         setRecentRequests(requests as Request[]);
         setGroupRequests(grpReqs);
-
-        if (statusFilter === 'all') {
+        const noFilters = filters.status === 'all' && !filters.dateFrom && !filters.dateTo && filters.groupId === 'all' && filters.templateId === 'all';
+        if (noFilters) {
           const myReqs = requests.filter((r) => r.created_by === user.id);
           setStats({
             myRequests: myReqs.length,
@@ -139,7 +108,6 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Bienvenido, {profile?.name}</h1>
@@ -147,10 +115,7 @@ export default function Dashboard() {
         </div>
         {(hasRole('solicitante') || hasRole('administrador')) && (
           <Link to="/requests/new">
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Nueva Solicitud
-            </Button>
+            <Button><Plus className="w-4 h-4 mr-2" /> Nueva Solicitud</Button>
           </Link>
         )}
       </div>
@@ -165,13 +130,10 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.myRequests}</div>
-              <Link to="/requests" className="text-xs text-primary hover:underline">
-                Ver todas
-              </Link>
+              <Link to="/requests" className="text-xs text-primary hover:underline">Ver todas</Link>
             </CardContent>
           </Card>
         )}
-
         {userGroupIds.length > 0 && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -184,7 +146,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         )}
-
         {(hasRole('gerencia') || hasRole('procesos') || hasRole('integridad_datos') || hasRole('administrador')) && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -193,13 +154,10 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.pendingReview}</div>
-              <Link to="/review" className="text-xs text-primary hover:underline">
-                Revisar
-              </Link>
+              <Link to="/review" className="text-xs text-primary hover:underline">Revisar</Link>
             </CardContent>
           </Card>
         )}
-
         {(hasRole('ejecutor') || hasRole('administrador')) && (
           <>
             <Card>
@@ -209,9 +167,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.pendingExecution}</div>
-                <Link to="/execution" className="text-xs text-primary hover:underline">
-                  Ver
-                </Link>
+                <Link to="/execution" className="text-xs text-primary hover:underline">Ver</Link>
               </CardContent>
             </Card>
             <Card>
@@ -227,26 +183,11 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Recent Requests */}
+      {/* Requests with filters */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="space-y-3">
           <CardTitle>Solicitudes</CardTitle>
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-muted-foreground" />
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px] h-8 text-sm">
-                <SelectValue placeholder="Filtrar por estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                {ALL_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {STATUS_LABELS[s]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <RequestFilters filters={filters} onChange={setFilters} />
         </CardHeader>
         <CardContent>
           {userGroupIds.length > 0 ? (
@@ -255,12 +196,8 @@ export default function Dashboard() {
                 <TabsTrigger value="all">Todas</TabsTrigger>
                 <TabsTrigger value="group">Mi Grupo ({groupRequests.length})</TabsTrigger>
               </TabsList>
-              <TabsContent value="all">
-                {renderRequestsList(recentRequests)}
-              </TabsContent>
-              <TabsContent value="group">
-                {renderRequestsList(groupRequests)}
-              </TabsContent>
+              <TabsContent value="all">{renderRequestsList(recentRequests)}</TabsContent>
+              <TabsContent value="group">{renderRequestsList(groupRequests)}</TabsContent>
             </Tabs>
           ) : (
             renderRequestsList(recentRequests)
@@ -272,20 +209,13 @@ export default function Dashboard() {
 
   function renderRequestsList(requests: Request[]) {
     if (requests.length === 0) {
-      return (
-        <p className="text-muted-foreground text-center py-4">
-          No hay solicitudes {statusFilter !== 'all' ? 'con este estado' : ''}
-        </p>
-      );
+      return <p className="text-muted-foreground text-center py-4">No hay solicitudes</p>;
     }
     return (
       <div className="space-y-3">
         {requests.map((request) => (
-          <Link
-            key={request.id}
-            to={`/requests/${request.id}`}
-            className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-          >
+          <Link key={request.id} to={`/requests/${request.id}`}
+            className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
             <div>
               <p className="font-medium">
                 <span className="text-xs font-mono text-muted-foreground mr-2">#{String((request as any).request_number).padStart(6, '0')}</span>
