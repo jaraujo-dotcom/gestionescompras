@@ -6,49 +6,67 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Request, RequestStatus } from '@/types/database';
+import { RequestFilters, RequestFilterValues, defaultFilters } from '@/components/filters/RequestFilters';
 import { Plus, Loader2, FileText, Eye, Users2 } from 'lucide-react';
 
 export default function RequestsList() {
   const { user } = useAuth();
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState<RequestFilterValues>(defaultFilters);
+  const [userGroupIds, setUserGroupIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (user) fetchUserGroups();
+  }, [user]);
 
   useEffect(() => {
     fetchRequests();
-  }, [user]);
+  }, [user, filters]);
+
+  const fetchUserGroups = async () => {
+    if (!user) return;
+    const { data } = await supabase.from('user_groups').select('group_id').eq('user_id', user.id);
+    if (data) setUserGroupIds(data.map((d) => d.group_id));
+  };
+
+  const applyFilters = (query: any) => {
+    if (filters.status !== 'all') query = query.eq('status', filters.status);
+    if (filters.groupId !== 'all') query = query.eq('group_id', filters.groupId);
+    if (filters.templateId !== 'all') query = query.eq('template_id', filters.templateId);
+    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom.toISOString());
+    if (filters.dateTo) {
+      const end = new Date(filters.dateTo);
+      end.setHours(23, 59, 59, 999);
+      query = query.lte('created_at', end.toISOString());
+    }
+    return query;
+  };
 
   const fetchRequests = async () => {
     if (!user) return;
+    setLoading(true);
 
     try {
-      // Fetch own requests
-      const { data: ownData, error: ownError } = await supabase
-        .from('requests')
-        .select('*, form_templates(name), groups(name)')
-        .eq('created_by', user.id)
-        .order('created_at', { ascending: false });
-
+      let ownQuery = supabase.from('requests').select('*, form_templates(name), groups(name)')
+        .eq('created_by', user.id).order('created_at', { ascending: false });
+      ownQuery = applyFilters(ownQuery);
+      const { data: ownData, error: ownError } = await ownQuery;
       if (ownError) throw ownError;
 
-      // Fetch group requests
-      const { data: groupIds } = await supabase
-        .from('user_groups')
-        .select('group_id')
-        .eq('user_id', user.id);
+      const { data: groupIds } = await supabase.from('user_groups').select('group_id').eq('user_id', user.id);
 
       let groupData: Request[] = [];
       if (groupIds && groupIds.length > 0) {
         const gIds = groupIds.map((g) => g.group_id);
-        const { data, error } = await supabase
-          .from('requests')
-          .select('*, form_templates(name), groups(name)')
-          .in('group_id', gIds)
-          .order('created_at', { ascending: false });
+        let grpQuery = supabase.from('requests').select('*, form_templates(name), groups(name)')
+          .in('group_id', gIds).order('created_at', { ascending: false });
+        grpQuery = applyFilters(grpQuery);
+        const { data, error } = await grpQuery;
         if (error) throw error;
         groupData = (data || []) as Request[];
       }
 
-      // Merge and deduplicate
       const allMap = new Map<string, Request>();
       for (const r of (ownData || []) as Request[]) allMap.set(r.id, r);
       for (const r of groupData) allMap.set(r.id, r);
@@ -63,7 +81,7 @@ export default function RequestsList() {
     }
   };
 
-  if (loading) {
+  if (loading && requests.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -79,12 +97,11 @@ export default function RequestsList() {
           <p className="text-muted-foreground">Sus solicitudes y las de su grupo</p>
         </div>
         <Link to="/requests/new">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Nueva Solicitud
-          </Button>
+          <Button><Plus className="w-4 h-4 mr-2" /> Nueva Solicitud</Button>
         </Link>
       </div>
+
+      <RequestFilters filters={filters} onChange={setFilters} userGroupIds={userGroupIds} />
 
       {requests.length === 0 ? (
         <Card>
@@ -92,14 +109,15 @@ export default function RequestsList() {
             <FileText className="w-12 h-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">Sin solicitudes</h3>
             <p className="text-muted-foreground mb-4">
-              Cree su primera solicitud para comenzar
+              {filters.status !== 'all' || filters.dateFrom || filters.dateTo || filters.groupId !== 'all' || filters.templateId !== 'all'
+                ? 'No hay solicitudes con los filtros seleccionados'
+                : 'Cree su primera solicitud para comenzar'}
             </p>
-            <Link to="/requests/new">
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Crear Solicitud
-              </Button>
-            </Link>
+            {filters.status === 'all' && !filters.dateFrom && !filters.dateTo && filters.groupId === 'all' && filters.templateId === 'all' && (
+              <Link to="/requests/new">
+                <Button><Plus className="w-4 h-4 mr-2" /> Crear Solicitud</Button>
+              </Link>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -122,20 +140,13 @@ export default function RequestsList() {
                         <span className="inline-flex items-center gap-1 mr-2"><Users2 className="w-3 h-3" />{(request as any).groups.name} ·</span>
                       )}
                       Creada: {new Date(request.created_at).toLocaleDateString('es-ES', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
+                        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
                       })}
                     </p>
                   </div>
                   <div className="flex gap-2">
                     <Link to={`/requests/${request.id}`}>
-                      <Button variant="outline" size="sm">
-                        <Eye className="w-4 h-4 mr-2" />
-                        Ver
-                      </Button>
+                      <Button variant="outline" size="sm"><Eye className="w-4 h-4 mr-2" /> Ver</Button>
                     </Link>
                     {(request.status === 'borrador' || request.status === 'devuelta') && (
                       <Link to={`/requests/${request.id}/edit`}>

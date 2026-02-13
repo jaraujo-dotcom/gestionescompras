@@ -8,6 +8,7 @@ interface ExportData {
   creatorName: string;
   createdAt: string;
   templateName?: string;
+  groupName?: string;
   fields: FormField[];
   values: Record<string, unknown>;
   history: { date: string; user: string; status: string; comment?: string }[];
@@ -40,6 +41,7 @@ export function exportToExcel(data: ExportData) {
     ['Solicitante', data.creatorName],
     ['Fecha', new Date(data.createdAt).toLocaleDateString('es-ES')],
     ...(data.templateName ? [['Formulario', data.templateName]] : []),
+    ...(data.groupName ? [['Grupo', data.groupName]] : []),
     [],
     ['--- Datos ---'],
   ];

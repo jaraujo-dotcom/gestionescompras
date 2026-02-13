@@ -214,6 +214,7 @@ export default function RequestDetail() {
       creatorName: creator?.name || 'Desconocido',
       createdAt: request.created_at,
       templateName: template?.name,
+      groupName: groupName || undefined,
       fields,
       values: request.data_json as Record<string, unknown>,
       history: history.map(h => ({
