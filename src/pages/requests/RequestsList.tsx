@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Request, RequestStatus } from '@/types/database';
-import { Plus, Loader2, FileText, Eye } from 'lucide-react';
+import { Plus, Loader2, FileText, Eye, Users2 } from 'lucide-react';
 
 export default function RequestsList() {
   const { user } = useAuth();
@@ -24,7 +24,7 @@ export default function RequestsList() {
       // Fetch own requests
       const { data: ownData, error: ownError } = await supabase
         .from('requests')
-        .select('*, form_templates(name)')
+        .select('*, form_templates(name), groups(name)')
         .eq('created_by', user.id)
         .order('created_at', { ascending: false });
 
@@ -41,7 +41,7 @@ export default function RequestsList() {
         const gIds = groupIds.map((g) => g.group_id);
         const { data, error } = await supabase
           .from('requests')
-          .select('*, form_templates(name)')
+          .select('*, form_templates(name), groups(name)')
           .in('group_id', gIds)
           .order('created_at', { ascending: false });
         if (error) throw error;
@@ -117,6 +117,9 @@ export default function RequestsList() {
                     <p className="text-sm text-muted-foreground">
                       {(request as any).form_templates?.name && (
                         <span className="font-medium text-foreground/70 mr-2">{(request as any).form_templates.name} ·</span>
+                      )}
+                      {(request as any).groups?.name && (
+                        <span className="inline-flex items-center gap-1 mr-2"><Users2 className="w-3 h-3" />{(request as any).groups.name} ·</span>
                       )}
                       Creada: {new Date(request.created_at).toLocaleDateString('es-ES', {
                         day: '2-digit',

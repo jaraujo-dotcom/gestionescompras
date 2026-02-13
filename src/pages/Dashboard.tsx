@@ -78,7 +78,7 @@ export default function Dashboard() {
     try {
       let query = supabase
         .from('requests')
-        .select('*, form_templates(name)')
+        .select('*, form_templates(name), groups(name)')
         .order('created_at', { ascending: false });
 
       if (statusFilter !== 'all') {
@@ -94,7 +94,7 @@ export default function Dashboard() {
       if (userGroupIds.length > 0) {
         let grpQuery = supabase
           .from('requests')
-          .select('*, form_templates(name)')
+          .select('*, form_templates(name), groups(name)')
           .in('group_id', userGroupIds)
           .order('created_at', { ascending: false })
           .limit(20);
@@ -294,6 +294,9 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">
                 {(request as any).form_templates?.name && (
                   <span className="mr-2">{(request as any).form_templates.name} ·</span>
+                )}
+                {(request as any).groups?.name && (
+                  <span className="mr-2 inline-flex items-center gap-1"><Users2 className="w-3 h-3" />{(request as any).groups.name} ·</span>
                 )}
                 {new Date(request.created_at).toLocaleDateString('es-ES')}
               </p>
