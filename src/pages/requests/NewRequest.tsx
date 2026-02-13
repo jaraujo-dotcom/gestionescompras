@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +20,27 @@ export default function NewRequest() {
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState('');
   const [formValues, setFormValues] = useState<Record<string, unknown>>({});
+  const [userGroups, setUserGroups] = useState<{ id: string; name: string }[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
+
+  // Fetch user groups
+  useEffect(() => {
+    const fetchGroups = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('user_groups')
+        .select('group_id, groups(id, name)')
+        .eq('user_id', user.id);
+      if (data) {
+        const groups = data
+          .map((d: any) => d.groups)
+          .filter(Boolean);
+        setUserGroups(groups);
+        if (groups.length === 1) setSelectedGroupId(groups[0].id);
+      }
+    };
+    fetchGroups();
+  }, [user]);
 
   const validateRequest = (submit: boolean) => {
     if (!title.trim()) {
@@ -53,15 +74,20 @@ export default function NewRequest() {
     try {
       const status = submit ? 'en_revision' : 'borrador';
 
+      const insertData: any = {
+        title,
+        template_id: selectedTemplate.id,
+        created_by: user.id,
+        status,
+        data_json: formValues as unknown as Record<string, never>,
+      };
+      if (selectedGroupId) {
+        insertData.group_id = selectedGroupId;
+      }
+
       const { error: requestError } = await supabase
         .from('requests')
-        .insert([{
-          title,
-          template_id: selectedTemplate.id,
-          created_by: user.id,
-          status,
-          data_json: formValues as unknown as Record<string, never>,
-        }]);
+        .insert([insertData]);
 
       if (requestError) throw requestError;
 
@@ -192,6 +218,23 @@ export default function NewRequest() {
               />
             </div>
           </div>
+          {userGroups.length > 0 && (
+            <div className="space-y-2">
+              <Label>Grupo</Label>
+              <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+                <SelectTrigger className="w-[300px]">
+                  <SelectValue placeholder="Sin grupo asignado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Sin grupo</SelectItem>
+                  {userGroups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Los miembros del grupo podrán ver esta solicitud</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

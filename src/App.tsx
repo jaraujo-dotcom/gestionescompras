@@ -25,6 +25,7 @@ import TemplateEditor from "./pages/admin/TemplateEditor";
 import NotFound from "./pages/NotFound";
 import NotificationsList from "./pages/notifications/NotificationsList";
 import NotificationSettings from "./pages/admin/NotificationSettings";
+import GroupsList from "./pages/admin/GroupsList";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,7 @@ const App = () => (
               <Route path="/admin/templates" element={<TemplatesList />} />
               <Route path="/admin/templates/:id" element={<TemplateEditor />} />
               <Route path="/admin/notifications" element={<NotificationSettings />} />
+              <Route path="/admin/groups" element={<GroupsList />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   FileText,
   Plus,
@@ -21,6 +22,7 @@ import {
   Eye,
   Loader2,
   Filter,
+  Users2,
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -28,6 +30,7 @@ interface DashboardStats {
   pendingReview: number;
   pendingExecution: number;
   inExecution: number;
+  groupRequests: number;
 }
 
 const ALL_STATUSES: RequestStatus[] = [
@@ -36,20 +39,39 @@ const ALL_STATUSES: RequestStatus[] = [
 ];
 
 export default function Dashboard() {
-  const { profile, hasRole } = useAuth();
+  const { profile, hasRole, user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     myRequests: 0,
     pendingReview: 0,
     pendingExecution: 0,
     inExecution: 0,
+    groupRequests: 0,
   });
   const [recentRequests, setRecentRequests] = useState<Request[]>([]);
+  const [groupRequests, setGroupRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [userGroupIds, setUserGroupIds] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState('all');
+
+  useEffect(() => {
+    if (user) fetchUserGroups();
+  }, [user]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [statusFilter]);
+  }, [statusFilter, userGroupIds]);
+
+  const fetchUserGroups = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('user_groups')
+      .select('group_id')
+      .eq('user_id', user.id);
+    if (data) {
+      setUserGroupIds(data.map((d) => d.group_id));
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -69,16 +91,19 @@ export default function Dashboard() {
       if (requests) {
         setRecentRequests(requests as Request[]);
 
-        const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // Stats always unfiltered — fetch separately only on first load
           if (statusFilter === 'all') {
             const myReqs = requests.filter((r) => r.created_by === user.id);
+            const grpReqs = requests.filter(
+              (r: any) => r.group_id && userGroupIds.includes(r.group_id) && r.created_by !== user.id
+            );
+            setGroupRequests(grpReqs as Request[]);
             setStats({
               myRequests: myReqs.length,
               pendingReview: requests.filter((r) => r.status === 'en_revision').length,
               pendingExecution: requests.filter((r) => r.status === 'aprobada').length,
               inExecution: requests.filter((r) => r.status === 'en_ejecucion').length,
+              groupRequests: grpReqs.length,
             });
           }
         }
@@ -133,6 +158,19 @@ export default function Dashboard() {
           </Card>
         )}
 
+        {userGroupIds.length > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Del Grupo</CardTitle>
+              <Users2 className="w-4 h-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.groupRequests}</div>
+              <p className="text-xs text-muted-foreground">Solicitudes de mi grupo</p>
+            </CardContent>
+          </Card>
+        )}
+
         {(hasRole('gerencia') || hasRole('procesos') || hasRole('integridad_datos') || hasRole('administrador')) && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -178,7 +216,7 @@ export default function Dashboard() {
       {/* Recent Requests */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Solicitudes Recientes</CardTitle>
+          <CardTitle>Solicitudes</CardTitle>
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-muted-foreground" />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -197,34 +235,56 @@ export default function Dashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          {recentRequests.length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">
-              No hay solicitudes {statusFilter !== 'all' ? 'con este estado' : 'aún'}
-            </p>
+          {userGroupIds.length > 0 ? (
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="mb-3">
+                <TabsTrigger value="all">Todas</TabsTrigger>
+                <TabsTrigger value="group">Mi Grupo ({groupRequests.length})</TabsTrigger>
+              </TabsList>
+              <TabsContent value="all">
+                {renderRequestsList(recentRequests)}
+              </TabsContent>
+              <TabsContent value="group">
+                {renderRequestsList(groupRequests)}
+              </TabsContent>
+            </Tabs>
           ) : (
-            <div className="space-y-3">
-              {recentRequests.map((request) => (
-                <Link
-                  key={request.id}
-                  to={`/requests/${request.id}`}
-                  className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                >
-                  <div>
-                    <p className="font-medium">
-                      <span className="text-xs font-mono text-muted-foreground mr-2">#{String((request as any).request_number).padStart(6, '0')}</span>
-                      {request.title}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(request.created_at).toLocaleDateString('es-ES')}
-                    </p>
-                  </div>
-                  <StatusBadge status={request.status as RequestStatus} />
-                </Link>
-              ))}
-            </div>
+            renderRequestsList(recentRequests)
           )}
         </CardContent>
       </Card>
     </div>
   );
+
+  function renderRequestsList(requests: Request[]) {
+    if (requests.length === 0) {
+      return (
+        <p className="text-muted-foreground text-center py-4">
+          No hay solicitudes {statusFilter !== 'all' ? 'con este estado' : ''}
+        </p>
+      );
+    }
+    return (
+      <div className="space-y-3">
+        {requests.map((request) => (
+          <Link
+            key={request.id}
+            to={`/requests/${request.id}`}
+            className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+          >
+            <div>
+              <p className="font-medium">
+                <span className="text-xs font-mono text-muted-foreground mr-2">#{String((request as any).request_number).padStart(6, '0')}</span>
+                {request.title}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {new Date(request.created_at).toLocaleDateString('es-ES')}
+              </p>
+            </div>
+            <StatusBadge status={request.status as RequestStatus} />
+          </Link>
+        ))}
+      </div>
+    );
+  }
 }
