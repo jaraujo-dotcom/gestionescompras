@@ -149,10 +149,9 @@ export default function NotificationsList() {
                   <p className={cn('text-sm', !n.is_read && 'font-semibold')}>
                     {n.title}
                   </p>
-                  <p
-                    className="text-sm text-muted-foreground mt-0.5"
-                    dangerouslySetInnerHTML={{ __html: n.message }}
-                  />
+                  <p className="text-sm text-muted-foreground mt-0.5 whitespace-pre-line">
+                    {n.message.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '')}
+                  </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {new Date(n.created_at).toLocaleString('es-ES')}
                   </p>

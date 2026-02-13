@@ -253,12 +253,12 @@ function FileFieldInput({
   fieldKey,
 }: {
   value: unknown;
-  onChange: (files: { name: string; url: string; type: string }[]) => void;
+  onChange: (files: { name: string; url: string; type: string; path?: string }[]) => void;
   readOnly: boolean;
   fieldKey: string;
 }) {
   const [uploading, setUploading] = useState(false);
-  const files: { name: string; url: string; type: string }[] = Array.isArray(value) ? value : [];
+  const files: { name: string; url: string; type: string; path?: string }[] = Array.isArray(value) ? value : [];
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -281,14 +281,17 @@ function FileFieldInput({
 
         if (error) throw error;
 
-        const { data: urlData } = supabase.storage
+        const { data: signedData, error: signError } = await supabase.storage
           .from('form-attachments')
-          .getPublicUrl(path);
+          .createSignedUrl(path, 60 * 60 * 4); // 4 hours
+
+        if (signError) throw signError;
 
         newFiles.push({
           name: file.name,
-          url: urlData.publicUrl,
+          url: signedData.signedUrl,
           type: file.type,
+          path, // store path for re-signing later
         });
       }
 
