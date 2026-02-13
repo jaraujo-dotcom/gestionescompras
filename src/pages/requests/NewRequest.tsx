@@ -81,7 +81,7 @@ export default function NewRequest() {
         status,
         data_json: formValues as unknown as Record<string, never>,
       };
-      if (selectedGroupId) {
+      if (selectedGroupId && selectedGroupId !== '__none__') {
         insertData.group_id = selectedGroupId;
       }
 
@@ -226,7 +226,7 @@ export default function NewRequest() {
                   <SelectValue placeholder="Sin grupo asignado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin grupo</SelectItem>
+                  <SelectItem value="__none__">Sin grupo</SelectItem>
                   {userGroups.map((g) => (
                     <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                   ))}
