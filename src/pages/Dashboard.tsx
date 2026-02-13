@@ -74,6 +74,7 @@ export default function Dashboard() {
   };
 
   const fetchDashboardData = async () => {
+    if (!user) return;
     try {
       let query = supabase
         .from('requests')
@@ -88,24 +89,38 @@ export default function Dashboard() {
 
       const { data: requests } = await query;
 
+      // Fetch group requests separately
+      let grpReqs: Request[] = [];
+      if (userGroupIds.length > 0) {
+        let grpQuery = supabase
+          .from('requests')
+          .select('*, form_templates(name)')
+          .in('group_id', userGroupIds)
+          .neq('created_by', user.id)
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        if (statusFilter !== 'all') {
+          grpQuery = grpQuery.eq('status', statusFilter as RequestStatus);
+        }
+
+        const { data: grpData } = await grpQuery;
+        grpReqs = (grpData || []) as Request[];
+      }
+
       if (requests) {
         setRecentRequests(requests as Request[]);
+        setGroupRequests(grpReqs);
 
-        if (user) {
-          if (statusFilter === 'all') {
-            const myReqs = requests.filter((r) => r.created_by === user.id);
-            const grpReqs = requests.filter(
-              (r: any) => r.group_id && userGroupIds.includes(r.group_id) && r.created_by !== user.id
-            );
-            setGroupRequests(grpReqs as Request[]);
-            setStats({
-              myRequests: myReqs.length,
-              pendingReview: requests.filter((r) => r.status === 'en_revision').length,
-              pendingExecution: requests.filter((r) => r.status === 'aprobada').length,
-              inExecution: requests.filter((r) => r.status === 'en_ejecucion').length,
-              groupRequests: grpReqs.length,
-            });
-          }
+        if (statusFilter === 'all') {
+          const myReqs = requests.filter((r) => r.created_by === user.id);
+          setStats({
+            myRequests: myReqs.length,
+            pendingReview: requests.filter((r) => r.status === 'en_revision').length,
+            pendingExecution: requests.filter((r) => r.status === 'aprobada').length,
+            inExecution: requests.filter((r) => r.status === 'en_ejecucion').length,
+            groupRequests: grpReqs.length,
+          });
         }
       }
     } catch (error) {
