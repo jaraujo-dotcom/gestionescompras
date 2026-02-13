@@ -43,7 +43,6 @@ export default function RequestsList() {
           .from('requests')
           .select('*, form_templates(name)')
           .in('group_id', gIds)
-          .neq('created_by', user.id)
           .order('created_at', { ascending: false });
         if (error) throw error;
         groupData = (data || []) as Request[];
