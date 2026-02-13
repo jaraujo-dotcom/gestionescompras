@@ -24,7 +24,7 @@ export default function RequestsList() {
       // Fetch own requests
       const { data: ownData, error: ownError } = await supabase
         .from('requests')
-        .select('*')
+        .select('*, form_templates(name)')
         .eq('created_by', user.id)
         .order('created_at', { ascending: false });
 
@@ -41,7 +41,7 @@ export default function RequestsList() {
         const gIds = groupIds.map((g) => g.group_id);
         const { data, error } = await supabase
           .from('requests')
-          .select('*')
+          .select('*, form_templates(name)')
           .in('group_id', gIds)
           .neq('created_by', user.id)
           .order('created_at', { ascending: false });
@@ -116,6 +116,9 @@ export default function RequestsList() {
                       <StatusBadge status={request.status as RequestStatus} />
                     </div>
                     <p className="text-sm text-muted-foreground">
+                      {(request as any).form_templates?.name && (
+                        <span className="font-medium text-foreground/70 mr-2">{(request as any).form_templates.name} ·</span>
+                      )}
                       Creada: {new Date(request.created_at).toLocaleDateString('es-ES', {
                         day: '2-digit',
                         month: 'short',

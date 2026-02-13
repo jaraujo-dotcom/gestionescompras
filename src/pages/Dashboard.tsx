@@ -77,7 +77,7 @@ export default function Dashboard() {
     try {
       let query = supabase
         .from('requests')
-        .select('*')
+        .select('*, form_templates(name)')
         .order('created_at', { ascending: false });
 
       if (statusFilter !== 'all') {
@@ -278,6 +278,9 @@ export default function Dashboard() {
                 {request.title}
               </p>
               <p className="text-sm text-muted-foreground">
+                {(request as any).form_templates?.name && (
+                  <span className="mr-2">{(request as any).form_templates.name} ·</span>
+                )}
                 {new Date(request.created_at).toLocaleDateString('es-ES')}
               </p>
             </div>
