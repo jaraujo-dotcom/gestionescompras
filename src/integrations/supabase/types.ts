@@ -577,7 +577,14 @@ export type Database = {
         | "gerencia"
         | "procesos"
         | "integridad_datos"
-      field_type: "text" | "number" | "date" | "select" | "boolean" | "table"
+      field_type:
+        | "text"
+        | "number"
+        | "date"
+        | "select"
+        | "boolean"
+        | "table"
+        | "file"
       request_status:
         | "borrador"
         | "en_revision"
@@ -724,7 +731,15 @@ export const Constants = {
         "procesos",
         "integridad_datos",
       ],
-      field_type: ["text", "number", "date", "select", "boolean", "table"],
+      field_type: [
+        "text",
+        "number",
+        "date",
+        "select",
+        "boolean",
+        "table",
+        "file",
+      ],
       request_status: [
         "borrador",
         "en_revision",

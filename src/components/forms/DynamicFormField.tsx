@@ -6,9 +6,10 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, CopyCheck } from 'lucide-react';
+import { Plus, Trash2, CopyCheck, Upload, X, FileText, Image } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Checkbox } from '@/components/ui/checkbox';
+import { supabase } from '@/integrations/supabase/client';
 import {
   normalizeRules,
   shouldShowField as shouldShowFieldFromRules,
@@ -244,6 +245,121 @@ function TableFieldInput({
   );
 }
 
+// File upload component
+function FileFieldInput({
+  value,
+  onChange,
+  readOnly,
+  fieldKey,
+}: {
+  value: unknown;
+  onChange: (files: { name: string; url: string; type: string }[]) => void;
+  readOnly: boolean;
+  fieldKey: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const files: { name: string; url: string; type: string }[] = Array.isArray(value) ? value : [];
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
+
+    setUploading(true);
+    const newFiles = [...files];
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      for (const file of Array.from(selectedFiles)) {
+        const ext = file.name.split('.').pop();
+        const path = `${user.id}/${fieldKey}/${Date.now()}_${file.name}`;
+        
+        const { error } = await supabase.storage
+          .from('form-attachments')
+          .upload(path, file);
+
+        if (error) throw error;
+
+        const { data: urlData } = supabase.storage
+          .from('form-attachments')
+          .getPublicUrl(path);
+
+        newFiles.push({
+          name: file.name,
+          url: urlData.publicUrl,
+          type: file.type,
+        });
+      }
+
+      onChange(newFiles);
+    } catch (err) {
+      console.error('Error uploading file:', err);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeFile = (idx: number) => {
+    onChange(files.filter((_, i) => i !== idx));
+  };
+
+  const isImage = (type: string) => type.startsWith('image/');
+
+  return (
+    <div className="space-y-2">
+      {files.length > 0 && (
+        <div className="space-y-1.5">
+          {files.map((file, idx) => (
+            <div key={idx} className="flex items-center gap-2 p-2 rounded-md border bg-muted/30">
+              {isImage(file.type) ? (
+                <Image className="w-4 h-4 text-primary shrink-0" />
+              ) : (
+                <FileText className="w-4 h-4 text-primary shrink-0" />
+              )}
+              <a
+                href={file.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary underline truncate flex-1"
+              >
+                {file.name}
+              </a>
+              {!readOnly && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-destructive shrink-0"
+                  onClick={() => removeFile(idx)}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {!readOnly && (
+        <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-dashed border-input bg-background cursor-pointer hover:bg-accent/50 transition-colors">
+          <Upload className="w-4 h-4 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">
+            {uploading ? 'Subiendo...' : 'Seleccionar archivos'}
+          </span>
+          <input
+            type="file"
+            multiple
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+            className="hidden"
+            onChange={handleUpload}
+            disabled={uploading}
+          />
+        </label>
+      )}
+    </div>
+  );
+}
+
 export function DynamicFormField({
   field,
   value,
@@ -367,6 +483,16 @@ export function DynamicFormField({
           />
         );
       }
+
+      case 'file':
+        return (
+          <FileFieldInput
+            value={value}
+            onChange={(files) => handleChange(field.field_key, files)}
+            readOnly={readOnly}
+            fieldKey={field.field_key}
+          />
+        );
 
       default:
         return <p className="text-muted-foreground">Tipo de campo no soportado</p>;

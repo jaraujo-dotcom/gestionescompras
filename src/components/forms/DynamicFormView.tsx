@@ -1,6 +1,7 @@
 import { FormField, FormSection, TableColumnSchema } from '@/types/database';
 import { shouldShowField } from './DynamicFormField';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { FileText, Image } from 'lucide-react';
 
 interface DynamicFormViewProps {
   fields: FormField[];
@@ -18,6 +19,10 @@ export function DynamicFormView({ fields, sections = [], values }: DynamicFormVi
 
     if (field.field_type === 'table') {
       return <TableFieldView key={field.id} field={field} value={value} />;
+    }
+
+    if (field.field_type === 'file') {
+      return <FileFieldView key={field.id} field={field} value={value} />;
     }
 
     return (
@@ -130,4 +135,42 @@ function formatValue(field: FormField, value: unknown): string {
     case 'number': return Number(value).toLocaleString('es-ES');
     default: return String(value);
   }
+}
+
+function FileFieldView({ field, value }: { field: FormField; value: unknown }) {
+  const files: { name: string; url: string; type: string }[] = Array.isArray(value) ? value : [];
+
+  if (files.length === 0) {
+    return (
+      <div className="flex gap-2">
+        <span className="font-medium text-sm min-w-[120px]">{field.label}:</span>
+        <span className="text-sm text-muted-foreground">Sin archivos</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <span className="font-medium text-sm">{field.label}:</span>
+      <div className="space-y-1 pl-2">
+        {files.map((file, idx) => (
+          <div key={idx} className="flex items-center gap-2">
+            {file.type?.startsWith('image/') ? (
+              <Image className="w-3.5 h-3.5 text-primary shrink-0" />
+            ) : (
+              <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
+            )}
+            <a
+              href={file.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary underline"
+            >
+              {file.name}
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
