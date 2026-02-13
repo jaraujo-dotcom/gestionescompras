@@ -186,8 +186,8 @@ export function NotificationBell() {
                     >
                       {n.title}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {n.message}
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {n.message.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '')}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {timeAgo(n.created_at)}
