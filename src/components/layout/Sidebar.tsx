@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, ClipboardCheck, Settings, Users, LayoutDashboard, PlayCircle, LogOut, ChevronLeft, ChevronRight, Bell, BellRing, ChevronDown, ShieldCheck, Users2 } from 'lucide-react';
+import { FileText, ClipboardCheck, Settings, Users, LayoutDashboard, PlayCircle, LogOut, ChevronLeft, ChevronRight, Bell, BellRing, ChevronDown, ShieldCheck, Users2, KeyRound } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -131,6 +131,10 @@ export function Sidebar() {
                 </span>)}
             </div>
           </div>}
+        <Link to="/change-password" className={cn('flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sidebar-foreground hover:bg-sidebar-accent mb-1', collapsed && 'justify-center px-0')}>
+          <KeyRound className="w-4 h-4 shrink-0" />
+          {!collapsed && <span className="text-sm">Cambiar Contraseña</span>}
+        </Link>
         <Button variant="ghost" onClick={signOut} className={cn('w-full text-sidebar-foreground hover:bg-sidebar-accent', collapsed ? 'justify-center px-0' : 'justify-start')}>
           <LogOut className="w-4 h-4" />
           {!collapsed && <span className="ml-2">Cerrar Sesión</span>}
