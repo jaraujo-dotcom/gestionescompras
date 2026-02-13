@@ -1,0 +1,207 @@
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Profile, AppRole, ROLE_LABELS } from '@/types/database';
+import { Loader2, Users, Save } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+interface UserWithRoles extends Profile {
+  roles: AppRole[];
+}
+
+const ALL_ROLES: AppRole[] = ['solicitante', 'gerencia', 'procesos', 'integridad_datos', 'ejecutor', 'administrador'];
+
+export default function UsersList() {
+  const [users, setUsers] = useState<UserWithRoles[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null);
+  const [selectedRoles, setSelectedRoles] = useState<AppRole[]>([]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const [profilesRes, rolesRes] = await Promise.all([
+        supabase.from('profiles').select('*').order('name'),
+        supabase.from('user_roles').select('*'),
+      ]);
+
+      if (profilesRes.error) throw profilesRes.error;
+
+      const usersWithRoles = (profilesRes.data as Profile[]).map((profile) => ({
+        ...profile,
+        roles: (rolesRes.data || [])
+          .filter((r) => r.user_id === profile.id)
+          .map((r) => r.role as AppRole),
+      }));
+
+      setUsers(usersWithRoles);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Error al cargar usuarios');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openEditDialog = (user: UserWithRoles) => {
+    setSelectedUser(user);
+    setSelectedRoles([...user.roles]);
+    setDialogOpen(true);
+  };
+
+  const toggleRole = (role: AppRole) => {
+    setSelectedRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
+    );
+  };
+
+  const handleSaveRoles = async () => {
+    if (!selectedUser) return;
+
+    setSaving(true);
+
+    try {
+      // Delete existing roles
+      await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', selectedUser.id);
+
+      // Insert new roles
+      if (selectedRoles.length > 0) {
+        const rolesToInsert = selectedRoles.map((role) => ({
+          user_id: selectedUser.id,
+          role,
+        }));
+
+        const { error } = await supabase.from('user_roles').insert(rolesToInsert);
+        if (error) throw error;
+      }
+
+      toast.success('Roles actualizados');
+      setDialogOpen(false);
+      fetchUsers();
+    } catch (error) {
+      console.error('Error saving roles:', error);
+      toast.error('Error al guardar roles');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Gestión de Usuarios</h1>
+        <p className="text-muted-foreground">Administre roles de usuarios del sistema</p>
+      </div>
+
+      {users.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Users className="w-12 h-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">Sin usuarios</h3>
+            <p className="text-muted-foreground">No hay usuarios registrados</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Usuarios ({users.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {users.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                >
+                  <div>
+                    <p className="font-medium">{user.name}</p>
+                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {user.roles.length === 0 ? (
+                        <span className="text-xs text-muted-foreground">Sin roles</span>
+                      ) : (
+                        user.roles.map((role) => (
+                          <span key={role} className={cn('role-badge', `role-${role}`)}>
+                            {ROLE_LABELS[role]}
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => openEditDialog(user)}>
+                    Editar Roles
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Edit Roles Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Roles</DialogTitle>
+            <DialogDescription>
+              Seleccione los roles para {selectedUser?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            {ALL_ROLES.map((role) => (
+              <div key={role} className="flex items-center space-x-3">
+                <Checkbox
+                  id={role}
+                  checked={selectedRoles.includes(role)}
+                  onCheckedChange={() => toggleRole(role)}
+                />
+                <Label htmlFor={role} className="flex-1">
+                  <span className={cn('role-badge', `role-${role}`)}>
+                    {ROLE_LABELS[role]}
+                  </span>
+                </Label>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveRoles} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

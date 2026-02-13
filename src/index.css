@@ -1,0 +1,215 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Sistema de Solicitudes - Design System */
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 217 91% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 50%;
+
+    --radius: 0.5rem;
+
+    /* Status colors for workflow */
+    --status-draft: 215 16% 47%;
+    --status-review: 217 91% 50%;
+    --status-returned: 38 92% 50%;
+    --status-approved: 142 76% 36%;
+    --status-executing: 262 83% 58%;
+    --status-completed: 142 76% 36%;
+    --status-rejected: 0 84% 60%;
+
+    /* Sidebar */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 18%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 222 47% 18%;
+    --sidebar-ring: 217 91% 60%;
+  }
+
+  .dark {
+    --background: 222 47% 8%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 47% 18%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 222 47% 18%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 222 47% 18%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 222 47% 18%;
+    --input: 222 47% 18%;
+    --ring: 217 91% 60%;
+
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 12%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 222 47% 12%;
+    --sidebar-ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer components {
+  /* Status badge variants */
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+
+  .status-borrador {
+    @apply bg-muted text-muted-foreground;
+  }
+
+  .status-en_revision {
+    @apply bg-blue-100 text-blue-700;
+  }
+
+  .status-devuelta {
+    @apply bg-amber-100 text-amber-700;
+  }
+
+  .status-aprobada {
+    @apply bg-emerald-100 text-emerald-700;
+  }
+
+  .status-en_ejecucion {
+    @apply bg-violet-100 text-violet-700;
+  }
+
+  .status-completada {
+    @apply bg-emerald-100 text-emerald-700;
+  }
+
+  .status-rechazada {
+    @apply bg-red-100 text-red-700;
+  }
+
+  .status-anulada {
+    @apply bg-gray-100 text-gray-700;
+  }
+
+  .status-en_espera {
+    @apply bg-orange-100 text-orange-700;
+  }
+
+  /* Role badge variants */
+  .role-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium;
+  }
+
+  .role-solicitante {
+    @apply bg-blue-100 text-blue-700;
+  }
+
+  .role-revisor {
+    @apply bg-amber-100 text-amber-700;
+  }
+
+  .role-ejecutor {
+    @apply bg-violet-100 text-violet-700;
+  }
+
+  .role-gerencia {
+    @apply bg-emerald-100 text-emerald-700;
+  }
+
+  .role-procesos {
+    @apply bg-cyan-100 text-cyan-700;
+  }
+
+  .role-integridad_datos {
+    @apply bg-indigo-100 text-indigo-700;
+  }
+
+  .role-administrador {
+    @apply bg-slate-800 text-slate-100;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+}
