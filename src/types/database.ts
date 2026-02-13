@@ -56,7 +56,7 @@ export interface RequestApproval {
 }
 
 // Field types for dynamic forms
-export type FieldType = 'text' | 'number' | 'date' | 'select' | 'boolean' | 'table';
+export type FieldType = 'text' | 'number' | 'date' | 'select' | 'boolean' | 'table' | 'file';
 
 // Condition operator types
 export type ConditionOperator = 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';

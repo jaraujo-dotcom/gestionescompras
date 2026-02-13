@@ -22,6 +22,7 @@ const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: 'select', label: 'Selección' },
   { value: 'boolean', label: 'Sí/No' },
   { value: 'table', label: 'Tabla' },
+  { value: 'file', label: 'Archivo' },
 ];
 
 const TABLE_COLUMN_TYPES: { value: TableColumnSchema['type']; label: string }[] = [
