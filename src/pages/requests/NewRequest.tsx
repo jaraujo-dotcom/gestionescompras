@@ -53,6 +53,11 @@ export default function NewRequest() {
       return false;
     }
 
+    if (!selectedGroupId || selectedGroupId === '__none__') {
+      toast.error('Debe seleccionar un grupo para la solicitud');
+      return false;
+    }
+
     if (submit && fields.length > 0) {
       const { valid, errors } = validateDynamicForm(fields, formValues);
       if (!valid) {
@@ -220,19 +225,18 @@ export default function NewRequest() {
           </div>
           {userGroups.length > 0 && (
             <div className="space-y-2">
-              <Label>Grupo</Label>
+              <Label>Grupo *</Label>
               <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
                 <SelectTrigger className="w-[300px]">
                   <SelectValue placeholder="Sin grupo asignado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">Sin grupo</SelectItem>
                   {userGroups.map((g) => (
                     <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Los miembros del grupo podrán ver esta solicitud</p>
+              <p className="text-xs text-muted-foreground">Seleccione el grupo al que pertenece esta solicitud</p>
             </div>
           )}
         </CardContent>

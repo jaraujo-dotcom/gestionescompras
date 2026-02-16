@@ -103,11 +103,19 @@ export default function UsersList() {
     setSaving(true);
 
     try {
-      // Delete existing roles and groups
-      await Promise.all([
-        supabase.from('user_roles').delete().eq('user_id', selectedUser.id),
-        supabase.from('user_groups').delete().eq('user_id', selectedUser.id),
-      ]);
+      // Delete existing roles
+      const { error: deleteRolesError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', selectedUser.id);
+      if (deleteRolesError) throw deleteRolesError;
+
+      // Delete existing groups
+      const { error: deleteGroupsError } = await supabase
+        .from('user_groups')
+        .delete()
+        .eq('user_id', selectedUser.id);
+      if (deleteGroupsError) throw deleteGroupsError;
 
       // Insert new roles
       if (selectedRoles.length > 0) {
