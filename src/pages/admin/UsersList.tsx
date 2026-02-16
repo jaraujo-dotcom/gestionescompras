@@ -103,37 +103,50 @@ export default function UsersList() {
     setSaving(true);
 
     try {
-      // Delete existing roles
-      const { error: deleteRolesError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', selectedUser.id);
-      if (deleteRolesError) throw deleteRolesError;
+      const currentRoles = selectedUser.roles;
+      const currentGroupIds = selectedUser.groups.map((g) => g.id);
 
-      // Delete existing groups
-      const { error: deleteGroupsError } = await supabase
-        .from('user_groups')
-        .delete()
-        .eq('user_id', selectedUser.id);
-      if (deleteGroupsError) throw deleteGroupsError;
+      // Compute diffs for roles
+      const rolesToAdd = selectedRoles.filter((r) => !currentRoles.includes(r));
+      const rolesToRemove = currentRoles.filter((r) => !selectedRoles.includes(r));
 
-      // Insert new roles
-      if (selectedRoles.length > 0) {
-        const rolesToInsert = selectedRoles.map((role) => ({
-          user_id: selectedUser.id,
-          role,
-        }));
-        const { error } = await supabase.from('user_roles').insert(rolesToInsert);
+      // Compute diffs for groups
+      const groupsToAdd = selectedGroupIds.filter((g) => !currentGroupIds.includes(g));
+      const groupsToRemove = currentGroupIds.filter((g) => !selectedGroupIds.includes(g));
+
+      // Insert new roles first (before any deletes)
+      if (rolesToAdd.length > 0) {
+        const { error } = await supabase
+          .from('user_roles')
+          .insert(rolesToAdd.map((role) => ({ user_id: selectedUser.id, role })));
         if (error) throw error;
       }
 
-      // Insert new group memberships
-      if (selectedGroupIds.length > 0) {
-        const groupsToInsert = selectedGroupIds.map((group_id) => ({
-          user_id: selectedUser.id,
-          group_id,
-        }));
-        const { error } = await supabase.from('user_groups').insert(groupsToInsert);
+      // Insert new groups
+      if (groupsToAdd.length > 0) {
+        const { error } = await supabase
+          .from('user_groups')
+          .insert(groupsToAdd.map((group_id) => ({ user_id: selectedUser.id, group_id })));
+        if (error) throw error;
+      }
+
+      // Remove old roles
+      for (const role of rolesToRemove) {
+        const { error } = await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', selectedUser.id)
+          .eq('role', role);
+        if (error) throw error;
+      }
+
+      // Remove old groups
+      for (const groupId of groupsToRemove) {
+        const { error } = await supabase
+          .from('user_groups')
+          .delete()
+          .eq('user_id', selectedUser.id)
+          .eq('group_id', groupId);
         if (error) throw error;
       }
 
