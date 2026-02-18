@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { FormField, TableColumnSchema, STATUS_LABELS, RequestStatus } from '@/types/database';
 
 interface ExportData {
@@ -29,12 +29,14 @@ function getFieldDisplayValue(field: FormField, value: unknown): string {
   }
 }
 
-export function exportToExcel(data: ExportData) {
+export async function exportToExcel(data: ExportData) {
   const num = formatRequestNumber(data.requestNumber);
-  const wb = XLSX.utils.book_new();
+  const workbook = new ExcelJS.Workbook();
 
   // General info sheet
-  const infoData = [
+  const infoSheet = workbook.addWorksheet('Información');
+
+  const infoRows: (string | undefined)[][] = [
     ['Solicitud', `#${num}`],
     ['Título', data.title],
     ['Estado', STATUS_LABELS[data.status]],
@@ -48,37 +50,56 @@ export function exportToExcel(data: ExportData) {
 
   const nonTableFields = data.fields.filter(f => f.field_type !== 'table');
   for (const f of nonTableFields) {
-    infoData.push([f.label, getFieldDisplayValue(f, data.values[f.field_key])]);
+    infoRows.push([f.label, getFieldDisplayValue(f, data.values[f.field_key])]);
   }
 
-  const infoSheet = XLSX.utils.aoa_to_sheet(infoData);
-  XLSX.utils.book_append_sheet(wb, infoSheet, 'Información');
+  for (const row of infoRows) {
+    infoSheet.addRow(row);
+  }
 
   // Table fields as separate sheets
   const tableFields = data.fields.filter(f => f.field_type === 'table');
   for (const tf of tableFields) {
     const cols: TableColumnSchema[] = tf.table_schema_json || [];
-    const rows = Array.isArray(data.values[tf.field_key]) ? (data.values[tf.field_key] as Record<string, unknown>[]) : [];
+    const rows = Array.isArray(data.values[tf.field_key])
+      ? (data.values[tf.field_key] as Record<string, unknown>[])
+      : [];
     if (rows.length > 0) {
-      const sheetData = [cols.map(c => c.label), ...rows.map(r => cols.map(c => r[c.key] != null ? r[c.key] : ''))];
-      const sheet = XLSX.utils.aoa_to_sheet(sheetData as any[][]);
-      XLSX.utils.book_append_sheet(wb, sheet, tf.label.substring(0, 31));
+      const sheet = workbook.addWorksheet(tf.label.substring(0, 31));
+      sheet.addRow(cols.map(c => c.label));
+      for (const r of rows) {
+        sheet.addRow(cols.map(c => (r[c.key] != null ? String(r[c.key]) : '')));
+      }
     }
   }
 
   // History sheet
   if (data.history.length > 0) {
-    const histData = [['Fecha', 'Usuario', 'Estado', 'Comentario'], ...data.history.map(h => [h.date, h.user, h.status, h.comment || ''])];
-    const histSheet = XLSX.utils.aoa_to_sheet(histData);
-    XLSX.utils.book_append_sheet(wb, histSheet, 'Historial');
+    const histSheet = workbook.addWorksheet('Historial');
+    histSheet.addRow(['Fecha', 'Usuario', 'Estado', 'Comentario']);
+    for (const h of data.history) {
+      histSheet.addRow([h.date, h.user, h.status, h.comment || '']);
+    }
   }
 
   // Comments sheet
   if (data.comments.length > 0) {
-    const commData = [['Fecha', 'Usuario', 'Comentario'], ...data.comments.map(c => [c.date, c.user, c.comment])];
-    const commSheet = XLSX.utils.aoa_to_sheet(commData);
-    XLSX.utils.book_append_sheet(wb, commSheet, 'Seguimiento');
+    const commSheet = workbook.addWorksheet('Seguimiento');
+    commSheet.addRow(['Fecha', 'Usuario', 'Comentario']);
+    for (const c of data.comments) {
+      commSheet.addRow([c.date, c.user, c.comment]);
+    }
   }
 
-  XLSX.writeFile(wb, `solicitud_${num}.xlsx`);
+  // Write to buffer and trigger download
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `solicitud_${num}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
