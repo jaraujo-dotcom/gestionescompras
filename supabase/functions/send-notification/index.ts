@@ -10,23 +10,87 @@ function renderTemplate(template: string, vars: Record<string, string>): string 
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? "");
 }
 
+/** Escapes user-supplied values before injecting into HTML email bodies. */
+function htmlEscape(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/** Renders a template and escapes every interpolated value for safe HTML output. */
+function renderTemplateHtml(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => htmlEscape(vars[key] ?? ""));
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // ── Authentication ──────────────────────────────────────────────────────────
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const anonClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } }
+  );
+
+  const token = authHeader.replace("Bearer ", "");
+  const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+  if (claimsError || !claimsData?.claims) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const callerId = claimsData.claims.sub as string;
+  // ────────────────────────────────────────────────────────────────────────────
+
   try {
-    const { requestId, eventType, title, message, triggeredBy, newStatus } = await req.json();
+    const body = await req.json();
+    const { requestId, eventType, title, message, triggeredBy, newStatus } = body;
+
+    // Basic input validation
+    if (!requestId || typeof requestId !== "string") {
+      return new Response(JSON.stringify({ error: "Invalid requestId" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Resolve the event key: for status_change, use per-status event
-    const resolvedEventType = eventType === 'status_change' && newStatus
+    const resolvedEventType = eventType === "status_change" && newStatus
       ? `status_to_${newStatus}`
       : eventType;
 
+    // Use service-role client for privileged DB operations
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // Verify caller can access this request
+    const { data: canView } = await supabase.rpc("can_view_request", {
+      _user_id: callerId,
+      _request_id: requestId,
+    });
+    if (!canView) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // 1️⃣ Load event config - try resolved key first, fallback to original
     let { data: eventData } = await supabase
@@ -68,7 +132,7 @@ Deno.serve(async (req) => {
     const appUrl = Deno.env.get("APP_URL") || "https://solicitudescompras.lovable.app";
     const requestLink = `${appUrl}/requests/${requestId}`;
 
-    // Template variables
+    // Template variables — user-supplied values will be HTML-escaped on render
     const vars: Record<string, string> = {
       user_name: "",
       request_title: requestData.title,
@@ -90,6 +154,8 @@ Deno.serve(async (req) => {
     }
 
     // 3️⃣ Build notification content from templates or fallback
+    // In-app: plain text rendered (React auto-escapes on display)
+    // Email: HTML-escaped values to prevent injection
     let finalTitle: string;
     let finalMessage: string;
     let emailSubject: string;
@@ -108,15 +174,15 @@ Deno.serve(async (req) => {
     }
 
     if (config?.email_subject_template) {
-      emailSubject = renderTemplate(config.email_subject_template, vars);
+      emailSubject = renderTemplateHtml(config.email_subject_template, vars);
     } else {
-      emailSubject = finalTitle;
+      emailSubject = htmlEscape(finalTitle);
     }
 
     if (config?.email_body_template) {
-      emailBodyContent = renderTemplate(config.email_body_template, vars);
+      emailBodyContent = renderTemplateHtml(config.email_body_template, vars);
     } else {
-      emailBodyContent = `<p>${message}</p>`;
+      emailBodyContent = `<p>${htmlEscape(message)}</p>`;
     }
 
     // 4️⃣ Get recipients based on config
@@ -136,7 +202,6 @@ Deno.serve(async (req) => {
       userIds.add(requestData.created_by);
     }
 
-    // Exclude triggeredBy? No — current behavior includes everyone
     // Get profiles for all user IDs
     const { data: profiles } = await supabase
       .from("profiles")
@@ -171,6 +236,10 @@ Deno.serve(async (req) => {
     const n8nWebhookUrl = Deno.env.get("N8N_EMAIL_WEBHOOK_URL");
 
     if (channelEmail && n8nWebhookUrl) {
+      const safeTemplateNameHtml = htmlEscape(templateName);
+      const safeRequestNumberHtml = htmlEscape(requestNumber);
+      const safeRequestLinkHtml = htmlEscape(requestLink);
+
       const htmlBody = `
 <!DOCTYPE html>
 <html>
@@ -194,11 +263,11 @@ Deno.serve(async (req) => {
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="padding:4px 0;color:#64748b;font-size:13px;width:140px;">Tipo</td>
-                        <td style="padding:4px 0;color:#1e293b;font-size:14px;font-weight:600;">${templateName}</td>
+                        <td style="padding:4px 0;color:#1e293b;font-size:14px;font-weight:600;">${safeTemplateNameHtml}</td>
                       </tr>
                       <tr>
                         <td style="padding:4px 0;color:#64748b;font-size:13px;">Nº Solicitud</td>
-                        <td style="padding:4px 0;color:#1e293b;font-size:14px;font-weight:600;">#${requestNumber}</td>
+                        <td style="padding:4px 0;color:#1e293b;font-size:14px;font-weight:600;">#${safeRequestNumberHtml}</td>
                       </tr>
                     </table>
                   </td>
@@ -207,7 +276,7 @@ Deno.serve(async (req) => {
               <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
                 <tr>
                   <td align="center" style="background-color:#2563eb;border-radius:8px;">
-                    <a href="${requestLink}" target="_blank" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">
+                    <a href="${safeRequestLinkHtml}" target="_blank" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">
                       Ver Solicitud →
                     </a>
                   </td>
@@ -252,9 +321,9 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
-      headers: corsHeaders,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
