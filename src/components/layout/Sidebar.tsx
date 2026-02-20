@@ -79,7 +79,7 @@ export function Sidebar() {
     {/* Header */}
     <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
       {!collapsed && <div className="flex items-center gap-2">
-        <Logo className="w-8 h-8 rounded-lg" iconClassName="w-4 h-4" />
+        <Logo className="h-8 w-auto min-w-[32px] rounded-lg" />
         <span className="font-semibold">Solicitudes</span>
       </div>}
       <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)} className="text-sidebar-foreground hover:bg-sidebar-accent">

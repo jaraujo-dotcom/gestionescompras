@@ -47,7 +47,7 @@ export default function ResetPassword() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <Logo className="mx-auto w-12 h-12 mb-4" iconClassName="w-6 h-6" />
+          <Logo className="mx-auto h-16 w-auto mb-6" />
           <CardTitle className="text-2xl">Nueva Contraseña</CardTitle>
           <CardDescription>Ingrese su nueva contraseña</CardDescription>
         </CardHeader>
