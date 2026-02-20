@@ -7,6 +7,7 @@ interface NotifyParams {
   message: string;
   triggeredBy: string;
   newStatus?: string;
+  baseUrl?: string;
 }
 
 /**
@@ -14,8 +15,13 @@ interface NotifyParams {
  * Creates in-app notifications and sends emails via edge function.
  */
 export function sendNotification(params: NotifyParams): void {
+  const body = {
+    ...params,
+    baseUrl: window.location.origin
+  };
+
   supabase.functions
-    .invoke('send-notification', { body: params })
+    .invoke('send-notification', { body })
     .then(({ error }) => {
       if (error) console.error('Notification error:', error);
     })

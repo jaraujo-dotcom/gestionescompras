@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { requestId, eventType, title, message, triggeredBy, newStatus } = body;
+    const { requestId, eventType, title, message, triggeredBy, newStatus, baseUrl } = body;
 
     // Basic input validation
     if (!requestId || typeof requestId !== "string") {
