@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
     const templateName = (requestData as any).form_templates?.name || "General";
 
     // Priority: 1. Passed baseUrl, 2. Env APP_URL, 3. Hardcoded new default
-    const appUrl = baseUrl || Deno.env.get("APP_URL") || "https://gestionescompras.lovable.app";
+    const appUrl = baseUrl || Deno.env.get("APP_URL") || "https://gestiones-compras.vercel.app";
     const requestLink = `${appUrl}/requests/${requestId}`;
 
     // Template variables — user-supplied values will be HTML-escaped on render
