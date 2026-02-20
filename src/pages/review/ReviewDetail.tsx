@@ -12,8 +12,7 @@ import { RequestComments } from '@/components/requests/RequestComments';
 import {
   Request, RequestStatusHistory, RequestStatus, Profile,
   FormField, FormSection, FormTemplate, FieldDependency,
-  TableColumnSchema, STATUS_LABELS, RequestApproval,
-  APPROVAL_ROLE_LABELS,
+  TableColumnSchema, STATUS_LABELS, RequestWorkflowStep,
 } from '@/types/database';
 import {
   ArrowLeft, CheckCircle, RotateCcw, XCircle, Loader2,
@@ -46,7 +45,7 @@ export default function ReviewDetail() {
   const [fields, setFields] = useState<FormField[]>([]);
   const [sections, setSections] = useState<FormSection[]>([]);
   const [history, setHistory] = useState<(RequestStatusHistory & { profile?: Profile })[]>([]);
-  const [approvals, setApprovals] = useState<(RequestApproval & { approverName?: string })[]>([]);
+  const [workflowSteps, setWorkflowSteps] = useState<(RequestWorkflowStep & { approverName?: string })[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [action, setAction] = useState<ReviewAction>('approve');
   const [comment, setComment] = useState('');
@@ -94,20 +93,24 @@ export default function ReviewDetail() {
         setSections((sectionsRes.data || []) as FormSection[]);
       }
 
-      // Fetch approvals
-      const { data: approvalsData } = await supabase
-        .from('request_approvals').select('*').eq('request_id', id!);
+      // Fetch Workflow Steps
+      const { data: stepsData } = await supabase
+        .from('request_workflow_steps')
+        .select('*')
+        .eq('request_id', id!)
+        .order('step_order');
 
-      if (approvalsData?.length) {
-        const approverIds = [...new Set(approvalsData.map(a => a.approved_by))];
+      if (stepsData?.length) {
+        const approverIds = [...new Set(stepsData.filter(s => s.approved_by).map(s => s.approved_by))];
         const { data: approverProfiles } = await supabase.rpc('get_profiles_by_ids', { _ids: approverIds });
-        const approvalsWithNames = approvalsData.map(a => ({
-          ...a,
-          approverName: approverProfiles?.find((p: { id: string; name: string }) => p.id === a.approved_by)?.name,
+
+        const stepsWithNames = stepsData.map(s => ({
+          ...s,
+          approverName: s.approved_by ? approverProfiles?.find((p: any) => p.id === s.approved_by)?.name : undefined,
         }));
-        setApprovals(approvalsWithNames as (RequestApproval & { approverName?: string })[]);
+        setWorkflowSteps(stepsWithNames as (RequestWorkflowStep & { approverName?: string })[]);
       } else {
-        setApprovals([]);
+        setWorkflowSteps([]);
       }
 
       // Fetch history
@@ -132,34 +135,19 @@ export default function ReviewDetail() {
     }
   };
 
-  // Determine which approval role the current user can act as
-  const getUserApprovalRole = (): string | null => {
-    const isAdmin = hasRole('administrador');
-    const gerenciaApproval = approvals.find(a => a.role === 'gerencia');
-    const gerenciaApproved = gerenciaApproval?.status === 'aprobada';
-
-    // Gerencia goes first
-    if ((hasRole('gerencia') || isAdmin) && (!gerenciaApproval || gerenciaApproval.status === 'pendiente')) {
-      return 'gerencia';
-    }
-
-    // After gerencia approves, procesos and integridad_datos can act
-    if (gerenciaApproved) {
-      if (hasRole('procesos') || isAdmin) {
-        const pa = approvals.find(a => a.role === 'procesos');
-        if (!pa || pa.status === 'pendiente') return 'procesos';
-      }
-      if (hasRole('integridad_datos') || isAdmin) {
-        const ia = approvals.find(a => a.role === 'integridad_datos');
-        if (!ia || ia.status === 'pendiente') return 'integridad_datos';
-      }
-    }
-
-    return null;
+  // Determine current active step
+  const getCurrentStep = () => {
+    return workflowSteps.find(s => s.status === 'pending') || null;
   };
 
-  const userApprovalRole = request?.status === 'en_revision' ? getUserApprovalRole() : null;
-  const canAct = !!userApprovalRole;
+  const currentStep = getCurrentStep();
+
+  // Check if current user can act on the current step
+  const canAct = !!(
+    request?.status === 'en_revision' &&
+    currentStep &&
+    (hasRole(currentStep.role_name as any) || hasRole('administrador'))
+  );
 
   const openDialog = (selectedAction: ReviewAction) => {
     setAction(selectedAction);
@@ -168,7 +156,7 @@ export default function ReviewDetail() {
   };
 
   const handleAction = async () => {
-    if (!request || !user || !userApprovalRole) return;
+    if (!request || !user || !currentStep) return;
     if ((action === 'return' || action === 'reject') && !comment.trim()) {
       toast.error('El comentario es requerido');
       return;
@@ -176,118 +164,97 @@ export default function ReviewDetail() {
 
     setProcessing(true);
     try {
-      const approvalStatus = action === 'approve' ? 'aprobada' : action === 'reject' ? 'rechazada' : 'devuelta';
+      // 1. Update current step
+      if (action === 'approve') {
+        const { error } = await supabase.from('request_workflow_steps')
+          .update({
+            status: 'approved',
+            approved_by: user.id,
+            comment: comment.trim() || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', currentStep.id);
 
-      // Upsert the approval record
-      const existingApproval = approvals.find(a => a.role === userApprovalRole);
-      if (existingApproval) {
-        await supabase.from('request_approvals')
-          .update({ status: approvalStatus, approved_by: user.id, comment: comment.trim() || null })
-          .eq('id', existingApproval.id);
-      } else {
-        await supabase.from('request_approvals').insert({
-          request_id: request.id,
-          role: userApprovalRole,
-          approved_by: user.id,
-          status: approvalStatus,
-          comment: comment.trim() || null,
-        });
-      }
+        if (error) throw error;
 
-      // Record in status history
-      await supabase.from('request_status_history').insert({
-        request_id: request.id,
-        from_status: request.status,
-        to_status: request.status, // stays en_revision unless final
-        changed_by: user.id,
-        comment: `[${APPROVAL_ROLE_LABELS[userApprovalRole]}] ${action === 'approve' ? 'Aprobó' : action === 'reject' ? 'Rechazó' : 'Devolvió'}${comment.trim() ? `: ${comment.trim()}` : ''}`,
-      });
+        // Check if there are more steps
+        const nextStep = workflowSteps.find(s => s.step_order > currentStep.step_order);
 
-      // If rejected → request becomes rechazada
-      if (action === 'reject') {
-        await supabase.from('requests').update({ status: 'rechazada' }).eq('id', request.id);
-        await supabase.from('request_status_history').insert({
-          request_id: request.id,
-          from_status: 'en_revision',
-          to_status: 'rechazada',
-          changed_by: user.id,
-          comment: `Solicitud rechazada por ${APPROVAL_ROLE_LABELS[userApprovalRole]}`,
-        });
-
-        sendNotification({
-          requestId: request.id,
-          eventType: 'status_change',
-          title: `Solicitud #${formatRequestNumber(request.request_number)}: ${STATUS_LABELS['rechazada']}`,
-          message: `${profile?.name || 'Usuario'} (${APPROVAL_ROLE_LABELS[userApprovalRole]}) rechazó "${request.title}".${comment.trim() ? ` Comentario: ${comment.trim()}` : ''}`,
-          triggeredBy: user.id,
-          newStatus: 'rechazada',
-        });
-        toast.success('Solicitud rechazada');
-      }
-      // If returned → request becomes devuelta and approvals reset
-      else if (action === 'return') {
-        await supabase.from('requests').update({ status: 'devuelta' }).eq('id', request.id);
-        // Delete all approvals so they start fresh on resubmission
-        await supabase.from('request_approvals').delete().eq('request_id', request.id);
-
-        await supabase.from('request_status_history').insert({
-          request_id: request.id,
-          from_status: 'en_revision',
-          to_status: 'devuelta',
-          changed_by: user.id,
-          comment: `Solicitud devuelta por ${APPROVAL_ROLE_LABELS[userApprovalRole]}`,
-        });
-
-        sendNotification({
-          requestId: request.id,
-          eventType: 'status_change',
-          title: `Solicitud #${formatRequestNumber(request.request_number)}: ${STATUS_LABELS['devuelta']}`,
-          message: `${profile?.name || 'Usuario'} (${APPROVAL_ROLE_LABELS[userApprovalRole]}) devolvió "${request.title}".${comment.trim() ? ` Comentario: ${comment.trim()}` : ''}`,
-          triggeredBy: user.id,
-          newStatus: 'devuelta',
-        });
-        toast.success('Solicitud devuelta al solicitante');
-      }
-      // If approved → check if all 3 are now approved
-      else {
-        // Re-fetch approvals to check status
-        const { data: latestApprovals } = await supabase
-          .from('request_approvals').select('*').eq('request_id', request.id);
-
-        const allApproved = ['gerencia', 'procesos', 'integridad_datos'].every(role =>
-          latestApprovals?.some(a => a.role === role && a.status === 'aprobada')
-        );
-
-        if (allApproved) {
+        if (!nextStep) {
+          // No more steps -> Fully Approved
           await supabase.from('requests').update({ status: 'aprobada' }).eq('id', request.id);
-          await supabase.from('request_status_history').insert({
-            request_id: request.id,
-            from_status: 'en_revision',
-            to_status: 'aprobada',
-            changed_by: user.id,
-            comment: 'Todas las aprobaciones completadas',
-          });
-
           sendNotification({
             requestId: request.id,
             eventType: 'status_change',
             title: `Solicitud #${formatRequestNumber(request.request_number)}: ${STATUS_LABELS['aprobada']}`,
-            message: `"${request.title}" ha sido aprobada por las 3 áreas y pasa a ejecución.`,
+            message: `"${request.title}" ha sido aprobada y pasa a ejecución.`,
             triggeredBy: user.id,
             newStatus: 'aprobada',
           });
           toast.success('Solicitud completamente aprobada');
         } else {
+          // Just this step approved
           sendNotification({
             requestId: request.id,
             eventType: 'status_change',
-            title: `Solicitud #${formatRequestNumber(request.request_number)}: Aprobación parcial`,
-            message: `${profile?.name || 'Usuario'} (${APPROVAL_ROLE_LABELS[userApprovalRole]}) aprobó "${request.title}".`,
+            title: `Solicitud #${formatRequestNumber(request.request_number)}: Paso aprobado`,
+            message: `${profile?.name || 'Usuario'} aprobó el paso "${currentStep.label}".`,
             triggeredBy: user.id,
           });
-          toast.success(`Aprobación de ${APPROVAL_ROLE_LABELS[userApprovalRole]} registrada`);
+          toast.success(`Paso "${currentStep.label}" aprobado`);
         }
       }
+      else if (action === 'reject') {
+        await supabase.from('request_workflow_steps')
+          .update({
+            status: 'rejected',
+            approved_by: user.id,
+            comment: comment.trim() || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', currentStep.id);
+
+        await supabase.from('requests').update({ status: 'rechazada' }).eq('id', request.id);
+
+        sendNotification({
+          requestId: request.id,
+          eventType: 'status_change',
+          title: `Solicitud #${formatRequestNumber(request.request_number)}: ${STATUS_LABELS['rechazada']}`,
+          message: `${profile?.name || 'Usuario'} rechazó "${request.title}". Razón: ${comment}`,
+          triggeredBy: user.id,
+          newStatus: 'rechazada',
+        });
+        toast.success('Solicitud rechazada');
+      }
+      else if (action === 'return') {
+        // Reset all steps to pending
+        await supabase.from('request_workflow_steps')
+          .update({ status: 'pending', approved_by: null, comment: null })
+          .eq('request_id', request.id);
+
+        await supabase.from('requests').update({ status: 'devuelta' }).eq('id', request.id);
+
+        sendNotification({
+          requestId: request.id,
+          eventType: 'status_change',
+          title: `Solicitud #${formatRequestNumber(request.request_number)}: ${STATUS_LABELS['devuelta']}`,
+          message: `${profile?.name || 'Usuario'} devolvió "${request.title}". Razón: ${comment}`,
+          triggeredBy: user.id,
+          newStatus: 'devuelta',
+        });
+        toast.success('Solicitud devuelta');
+      }
+
+      // Record in history
+      await supabase.from('request_status_history').insert({
+        request_id: request.id,
+        from_status: request.status,
+        to_status: action === 'approve' && !workflowSteps.find(s => s.step_order > currentStep.step_order) ? 'aprobada' :
+          action === 'reject' ? 'rechazada' :
+            action === 'return' ? 'devuelta' : request.status,
+        changed_by: user.id,
+        comment: `[${currentStep.label}] ${action === 'approve' ? 'Aprobado' : action === 'reject' ? 'Rechazado' : 'Devuelto'}: ${comment}`,
+      });
 
       navigate('/review');
     } catch (error) {
@@ -352,32 +319,21 @@ export default function ReviewDetail() {
 
   const actionLabels: Record<ReviewAction, { title: string; description: string; buttonText: string }> = {
     approve: {
-      title: 'Aprobar Solicitud',
-      description: `¿Está seguro de aprobar esta solicitud como ${APPROVAL_ROLE_LABELS[userApprovalRole || ''] || ''}?`,
+      title: 'Aprobar Paso',
+      description: `¿Está seguro de aprobar el paso "${currentStep?.label}"?`,
       buttonText: 'Aprobar',
     },
     return: {
       title: 'Devolver Solicitud',
-      description: 'Indique el motivo de la devolución para que el solicitante corrija. Se reiniciarán todas las aprobaciones previas.',
+      description: 'Se reiniciarán todos los pasos de aprobación.',
       buttonText: 'Devolver',
     },
     reject: {
       title: 'Rechazar Solicitud',
-      description: 'Indique el motivo del rechazo. Esta acción no se puede deshacer.',
+      description: 'Esta acción rechazará permanentemente la solicitud.',
       buttonText: 'Rechazar',
     },
   };
-
-  const getApprovalStatusForRole = (role: string) => {
-    const approval = approvals.find(a => a.role === role);
-    return approval?.status || 'pendiente';
-  };
-
-  const approvalRoles = [
-    { role: 'gerencia', label: 'Gerencia', order: 1 },
-    { role: 'procesos', label: 'Procesos', order: 2 },
-    { role: 'integridad_datos', label: 'Integridad de Datos', order: 3 },
-  ];
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
@@ -404,67 +360,53 @@ export default function ReviewDetail() {
         </Button>
       </div>
 
-      {/* Approval Progress Panel */}
+      {/* Dynamic Workflow Progress Panel */}
       <Card>
         <CardHeader>
-          <CardTitle>Estado de Aprobaciones</CardTitle>
+          <CardTitle>Flujo de Aprobación</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {approvalRoles.map(({ role, label, order }) => {
-              const status = getApprovalStatusForRole(role);
-              const approval = approvals.find(a => a.role === role);
-              const gerenciaStatus = getApprovalStatusForRole('gerencia');
-              const isBlocked = order > 1 && gerenciaStatus !== 'aprobada';
-
-              return (
-                <div
-                  key={role}
-                  className={cn(
-                    'p-4 rounded-lg border-2 transition-colors',
-                    status === 'aprobada' && 'border-emerald-300 bg-emerald-50',
-                    status === 'rechazada' && 'border-red-300 bg-red-50',
-                    status === 'devuelta' && 'border-amber-300 bg-amber-50',
-                    status === 'pendiente' && !isBlocked && 'border-blue-200 bg-blue-50',
-                    status === 'pendiente' && isBlocked && 'border-muted bg-muted/30',
-                  )}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-sm">{order}. {label}</span>
-                    {status === 'aprobada' && <CheckCircle className="w-5 h-5 text-emerald-600" />}
-                    {status === 'rechazada' && <XCircle className="w-5 h-5 text-red-600" />}
-                    {status === 'devuelta' && <RotateCcw className="w-5 h-5 text-amber-600" />}
-                    {status === 'pendiente' && <Clock className="w-5 h-5 text-muted-foreground" />}
+          <div className="space-y-4">
+            {workflowSteps.length === 0 ? (
+              <p className="text-muted-foreground">Este solicitud no tiene pasos de aprobación configurados.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {workflowSteps.map((step, index) => (
+                  <div
+                    key={step.id}
+                    className={cn(
+                      'p-4 rounded-lg border-2 transition-colors',
+                      step.status === 'approved' && 'border-emerald-300 bg-emerald-50',
+                      step.status === 'rejected' && 'border-red-300 bg-red-50',
+                      step.status === 'pending' && currentStep?.id === step.id && 'border-blue-300 bg-blue-50 ring-1 ring-blue-300',
+                      step.status === 'pending' && currentStep?.id !== step.id && 'border-muted bg-muted/30',
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-sm">{index + 1}. {step.label}</span>
+                      {step.status === 'approved' && <CheckCircle className="w-5 h-5 text-emerald-600" />}
+                      {step.status === 'rejected' && <XCircle className="w-5 h-5 text-red-600" />}
+                      {step.status === 'pending' && <Clock className="w-5 h-5 text-muted-foreground" />}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {step.status === 'approved' && `Aprobado por ${step.approverName || 'Usuario'}`}
+                      {step.status === 'pending' && (currentStep?.id === step.id ? 'En espera...' : 'Pendiente')}
+                    </p>
                   </div>
-                  <p className={cn(
-                    'text-xs',
-                    status === 'aprobada' && 'text-emerald-700',
-                    status === 'rechazada' && 'text-red-700',
-                    status === 'devuelta' && 'text-amber-700',
-                    status === 'pendiente' && 'text-muted-foreground',
-                  )}>
-                    {status === 'aprobada' && `Aprobado por ${approval?.approverName || 'Usuario'}`}
-                    {status === 'rechazada' && `Rechazado por ${approval?.approverName || 'Usuario'}`}
-                    {status === 'devuelta' && `Devuelto por ${approval?.approverName || 'Usuario'}`}
-                    {status === 'pendiente' && (isBlocked ? 'Esperando aprobación de Gerencia' : 'Pendiente')}
-                  </p>
-                  {approval?.comment && (
-                    <p className="text-xs mt-1 text-muted-foreground italic">"{approval.comment}"</p>
-                  )}
-                </div>
-              );
-            })}
+                ))}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
       {/* Action Buttons */}
-      {canAct && request.status === 'en_revision' && (
+      {canAct && (
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <p className="font-medium">
-                Aprobación como <span className="text-primary">{APPROVAL_ROLE_LABELS[userApprovalRole!]}</span>
+                Acción requerida: <span className="text-primary">{currentStep?.label}</span>
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => openDialog('return')}>

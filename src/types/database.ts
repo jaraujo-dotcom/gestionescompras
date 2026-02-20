@@ -1,12 +1,12 @@
 // Status types
-export type RequestStatus = 
-  | 'borrador' 
-  | 'en_revision' 
-  | 'devuelta' 
-  | 'aprobada' 
-  | 'en_ejecucion' 
+export type RequestStatus =
+  | 'borrador'
+  | 'en_revision'
+  | 'devuelta'
+  | 'aprobada'
+  | 'en_ejecucion'
   | 'en_espera'
-  | 'completada' 
+  | 'completada'
   | 'rechazada'
   | 'anulada';
 
@@ -152,6 +152,7 @@ export interface FormTemplate {
   name: string;
   description: string | null;
   is_active: boolean;
+  default_workflow_id: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -207,6 +208,37 @@ export interface RequestItem {
   observaciones: string | null;
   item_order: number;
   created_at: string;
+}
+
+// Workflow types
+export interface WorkflowTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkflowStep {
+  id: string;
+  workflow_id: string;
+  step_order: number;
+  role_name: string; // e.g. 'gerencia', 'procesos'
+  label: string; // e.g. 'Aprobación Gerencia'
+  created_at: string;
+}
+
+export interface RequestWorkflowStep {
+  id: string;
+  request_id: string;
+  step_order: number;
+  role_name: string;
+  label: string;
+  status: 'pending' | 'approved' | 'rejected' | 'skipped';
+  approved_by: string | null;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface RequestStatusHistory {

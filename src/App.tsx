@@ -26,6 +26,8 @@ import NotFound from "./pages/NotFound";
 import NotificationsList from "./pages/notifications/NotificationsList";
 import NotificationSettings from "./pages/admin/NotificationSettings";
 import GroupsList from "./pages/admin/GroupsList";
+import WorkflowList from "./pages/admin/workflows/WorkflowList";
+import WorkflowEditor from "./pages/admin/workflows/WorkflowEditor";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ChangePassword from "./pages/ChangePassword";
@@ -50,27 +52,30 @@ const App = () => (
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/notifications" element={<NotificationsList />} />
-              
+
               {/* Requests */}
               <Route path="/requests" element={<RequestsList />} />
               <Route path="/requests/new" element={<NewRequest />} />
               <Route path="/requests/:id" element={<RequestDetail />} />
               <Route path="/requests/:id/edit" element={<EditRequest />} />
-              
+
               {/* Review */}
               <Route path="/review" element={<ReviewList />} />
               <Route path="/review/:id" element={<ReviewDetail />} />
-              
+
               {/* Execution */}
               <Route path="/execution" element={<ExecutionList />} />
               <Route path="/execution/:id" element={<ExecutionDetail />} />
-              
+
               {/* Admin */}
               <Route path="/admin/users" element={<UsersList />} />
               <Route path="/admin/templates" element={<TemplatesList />} />
               <Route path="/admin/templates/:id" element={<TemplateEditor />} />
               <Route path="/admin/notifications" element={<NotificationSettings />} />
               <Route path="/admin/groups" element={<GroupsList />} />
+              <Route path="/admin/workflows" element={<WorkflowList />} />
+              <Route path="/admin/workflows/new" element={<WorkflowEditor />} />
+              <Route path="/admin/workflows/:id" element={<WorkflowEditor />} />
               <Route path="/change-password" element={<ChangePassword />} />
             </Route>
 

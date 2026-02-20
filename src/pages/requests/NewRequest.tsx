@@ -117,6 +117,31 @@ export default function NewRequest() {
         comment: submit ? 'Solicitud enviada a revisión' : 'Solicitud creada como borrador',
       });
 
+      // Workflow Instantiation
+      if (selectedTemplate.default_workflow_id) {
+        const { data: workflowSteps } = await supabase
+          .from('workflow_steps')
+          .select('*')
+          .eq('workflow_id', selectedTemplate.default_workflow_id)
+          .order('step_order');
+
+        if (workflowSteps && workflowSteps.length > 0) {
+          const requestSteps = workflowSteps.map((step: any) => ({
+            request_id: requestData.id,
+            step_order: step.step_order,
+            role_name: step.role_name,
+            label: step.label,
+            status: 'pending',
+          }));
+
+          const { error: stepsError } = await supabase
+            .from('request_workflow_steps')
+            .insert(requestSteps);
+
+          if (stepsError) throw stepsError;
+        }
+      }
+
       if (submit) {
         sendNotification({
           requestId: requestData.id,
