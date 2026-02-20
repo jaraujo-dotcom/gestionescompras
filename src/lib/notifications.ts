@@ -17,7 +17,7 @@ interface NotifyParams {
 export function sendNotification(params: NotifyParams): void {
   const body = {
     ...params,
-    baseUrl: window.location.origin
+    baseUrl: "https://gestionescompras.lovable.app"
   };
 
   supabase.functions
