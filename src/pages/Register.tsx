@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Loader2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { Logo } from '@/components/ui/Logo';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -35,11 +36,11 @@ export default function Register() {
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardContent className="pt-6 text-center">
-          <div className="mx-auto w-16 h-16 rounded-full bg-status-approved/20 flex items-center justify-center mb-4">
-            <CheckCircle className="w-8 h-8 text-status-approved" />
-          </div>
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center">
+            <div className="mx-auto w-16 h-16 rounded-full bg-status-approved/20 flex items-center justify-center mb-4">
+              <CheckCircle className="w-8 h-8 text-status-approved" />
+            </div>
             <h2 className="text-xl font-semibold mb-2">Revise su correo</h2>
             <p className="text-muted-foreground mb-4">
               Hemos enviado un enlace de confirmación a <strong>{email}</strong>
@@ -59,9 +60,7 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto w-12 h-12 rounded-xl bg-primary flex items-center justify-center mb-4">
-            <FileText className="w-6 h-6 text-primary-foreground" />
-          </div>
+          <Logo className="mx-auto w-12 h-12 mb-4" iconClassName="w-6 h-6" />
           <CardTitle className="text-2xl">Crear Cuenta</CardTitle>
           <CardDescription>Complete sus datos para registrarse</CardDescription>
         </CardHeader>

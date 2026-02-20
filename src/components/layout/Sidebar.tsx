@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Logo } from '@/components/ui/Logo';
 
 export function Sidebar() {
   const {
@@ -78,9 +79,7 @@ export function Sidebar() {
     {/* Header */}
     <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
       {!collapsed && <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-          <FileText className="w-4 h-4 text-sidebar-primary-foreground" />
-        </div>
+        <Logo className="w-8 h-8 rounded-lg" iconClassName="w-4 h-4" />
         <span className="font-semibold">Solicitudes</span>
       </div>}
       <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)} className="text-sidebar-foreground hover:bg-sidebar-accent">

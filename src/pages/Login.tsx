@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Logo } from '@/components/ui/Logo';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -34,9 +35,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto w-12 h-12 rounded-xl bg-primary flex items-center justify-center mb-4">
-            <FileText className="w-6 h-6 text-primary-foreground" />
-          </div>
+          <Logo className="mx-auto w-12 h-12 mb-4" iconClassName="w-6 h-6" />
           <CardTitle className="text-2xl">Sistema de Solicitudes</CardTitle>
           <CardDescription>Ingrese sus credenciales para continuar</CardDescription>
         </CardHeader>
