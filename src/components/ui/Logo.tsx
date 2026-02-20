@@ -19,9 +19,14 @@ export function Logo({ className, iconClassName }: LogoProps) {
   //   </div>
   // );
 
-  return (
-    <div className={cn('flex items-center justify-center rounded-xl bg-primary', className)}>
-      <FileText className={cn('text-primary-foreground', iconClassName)} />
-    </div>
-  );
+ return (
+  <div className={cn('flex items-center justify-center', className)}>
+    <img 
+      src="/logo.png" 
+      alt="Logo" 
+      className={cn('w-full h-full object-contain', iconClassName)} 
+    />
+  </div>
+);
+
 }
