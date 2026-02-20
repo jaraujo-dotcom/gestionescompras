@@ -19,7 +19,7 @@ import {
   TableColumnSchema,
   STATUS_LABELS,
 } from '@/types/database';
-import { ArrowLeft, Edit, Send, Loader2, Clock, User, MessageSquare, Trash2, Ban, FileSpreadsheet, Users2 } from 'lucide-react';
+import { ArrowLeft, Edit, Send, Loader2, Clock, User, MessageSquare, Trash2, Ban, FileSpreadsheet, Users2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdminStatusChanger } from '@/components/requests/AdminStatusChanger';
 import { exportToExcel } from '@/lib/exportRequest';
@@ -66,7 +66,7 @@ export default function RequestDetail() {
         .single();
 
       if (requestError) throw requestError;
-      
+
       const req = requestData as Request;
       setRequest(req);
 
@@ -199,7 +199,7 @@ export default function RequestDetail() {
     if (!request) return;
     const { data: commentsData } = await supabase
       .from('request_comments').select('*').eq('request_id', request.id).order('created_at', { ascending: true });
-    
+
     let commentProfiles: { id: string; name: string }[] = [];
     if (commentsData && commentsData.length > 0) {
       const userIds = [...new Set(commentsData.map(c => c.user_id))];
@@ -249,7 +249,7 @@ export default function RequestDetail() {
     );
   }
 
-  const canEdit = request.created_by === user?.id && 
+  const canEdit = request.created_by === user?.id &&
     (request.status === 'borrador' || request.status === 'devuelta');
 
   const canDelete = request.status === 'borrador' && (
@@ -269,9 +269,16 @@ export default function RequestDetail() {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-mono text-muted-foreground">#{formatRequestNumber(request.request_number)}</span>
+              <span className="font-medium text-sm font-mono text-muted-foreground">#{formatRequestNumber(request.request_number)}</span>
               <h1 className="text-2xl font-bold">{request.title}</h1>
               <StatusBadge status={request.status as RequestStatus} />
+              {request.status === 'en_revision' && (
+                <Link to={`/review/${request.id}`}>
+                  <Button variant="secondary" size="sm" className="ml-2">
+                    <ShieldCheck className="w-4 h-4 mr-2" /> Gestionar Aprobación
+                  </Button>
+                </Link>
+              )}
             </div>
             <p className="text-muted-foreground">
               {template?.name && <span className="mr-2">• {template.name}</span>}
