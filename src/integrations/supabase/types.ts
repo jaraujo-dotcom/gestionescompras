@@ -128,6 +128,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          default_workflow_id: string | null
           description: string | null
           id: string
           is_active: boolean
@@ -137,6 +138,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          default_workflow_id?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
@@ -146,13 +148,22 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          default_workflow_id?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
           name?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "form_templates_default_workflow_id_fkey"
+            columns: ["default_workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       groups: {
         Row: {
@@ -490,6 +501,60 @@ export type Database = {
           },
         ]
       }
+      request_workflow_steps: {
+        Row: {
+          approved_by: string | null
+          comment: string | null
+          created_at: string | null
+          id: string
+          label: string
+          request_id: string | null
+          role_name: string
+          status: string
+          step_order: number
+          updated_at: string | null
+        }
+        Insert: {
+          approved_by?: string | null
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          label: string
+          request_id?: string | null
+          role_name: string
+          status?: string
+          step_order: number
+          updated_at?: string | null
+        }
+        Update: {
+          approved_by?: string | null
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          label?: string
+          request_id?: string | null
+          role_name?: string
+          status?: string
+          step_order?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_workflow_steps_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_workflow_steps_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       requests: {
         Row: {
           created_at: string
@@ -544,6 +609,36 @@ export type Database = {
           },
         ]
       }
+      role_definitions: {
+        Row: {
+          can_approve: boolean | null
+          created_at: string | null
+          description: string | null
+          display_name: string
+          id: string
+          is_system: boolean | null
+          role_key: string
+        }
+        Insert: {
+          can_approve?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          display_name: string
+          id?: string
+          is_system?: boolean | null
+          role_key: string
+        }
+        Update: {
+          can_approve?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_system?: boolean | null
+          role_key?: string
+        }
+        Relationships: []
+      }
       user_groups: {
         Row: {
           created_at: string
@@ -591,6 +686,65 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      workflow_steps: {
+        Row: {
+          created_at: string | null
+          id: string
+          label: string
+          role_name: string
+          step_order: number
+          workflow_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          label: string
+          role_name: string
+          step_order: number
+          workflow_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          label?: string
+          role_name?: string
+          step_order?: number
+          workflow_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_steps_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_templates: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
