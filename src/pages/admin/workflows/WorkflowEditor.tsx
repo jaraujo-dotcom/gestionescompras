@@ -144,9 +144,10 @@ export default function WorkflowEditor() {
 
             toast.success('Flujo guardado correctamente');
             navigate('/admin/workflows');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving workflow:', error);
-            toast.error('Error al guardar el flujo');
+            const msg = error?.message || error?.details || JSON.stringify(error);
+            toast.error(`Error al guardar el flujo: ${msg}`);
         } finally {
             setSaving(false);
         }

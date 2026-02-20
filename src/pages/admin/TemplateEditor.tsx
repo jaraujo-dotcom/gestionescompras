@@ -9,6 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { WorkflowTemplate } from '@/types/database';
 import { FormTemplate, FieldRule, TableColumnSchema } from '@/types/database';
 import { FieldDraft, SectionDraft } from '@/components/admin/FieldEditor';
 import { SortableFieldItem } from '@/components/admin/SortableFieldItem';
@@ -24,7 +28,7 @@ export default function TemplateEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  
+
   // 1. Definición de Estados
   const [loading, setLoading] = useState(!!id);
   const [saving, setSaving] = useState(false);
@@ -35,6 +39,8 @@ export default function TemplateEditor() {
   const [fields, setFields] = useState<FieldDraft[]>([]);
   const [sections, setSections] = useState<SectionDraft[]>([]);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [workflows, setWorkflows] = useState<WorkflowTemplate[]>([]);
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>('none');
 
   const isNew = !id || id === 'new';
 
@@ -44,6 +50,7 @@ export default function TemplateEditor() {
   );
 
   useEffect(() => {
+    fetchWorkflows();
     if (isNew) {
       setLoading(false);
       return;
@@ -52,6 +59,14 @@ export default function TemplateEditor() {
       fetchTemplate();
     }
   }, [id, isNew]);
+
+  const fetchWorkflows = async () => {
+    const { data } = await supabase
+      .from('workflow_templates')
+      .select('id, name, description, created_at, updated_at')
+      .order('name');
+    setWorkflows(data || []);
+  };
 
   const fetchTemplate = async () => {
     try {
@@ -67,6 +82,7 @@ export default function TemplateEditor() {
       setName(template.name);
       setDescription(template.description || '');
       setIsActive(template.is_active);
+      setSelectedWorkflowId(template.default_workflow_id || 'none');
 
       const mappedSections: SectionDraft[] = (sectionsRes.data || []).map((s) => ({
         id: s.id,
@@ -206,6 +222,8 @@ export default function TemplateEditor() {
     try {
       let templateId: string;
 
+      const workflowId = selectedWorkflowId === 'none' ? null : selectedWorkflowId;
+
       if (isNew) {
         const { data, error } = await supabase
           .from('form_templates')
@@ -214,6 +232,7 @@ export default function TemplateEditor() {
             description: description || null,
             is_active: isActive,
             created_by: user?.id,
+            default_workflow_id: workflowId,
           })
           .select()
           .single();
@@ -227,6 +246,7 @@ export default function TemplateEditor() {
             name,
             description: description || null,
             is_active: isActive,
+            default_workflow_id: workflowId,
           })
           .eq('id', id);
 
@@ -405,6 +425,22 @@ export default function TemplateEditor() {
               placeholder="Describe el propósito de esta plantilla..."
               rows={2}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="workflow">Flujo de Aprobación por defecto</Label>
+            <Select value={selectedWorkflowId} onValueChange={setSelectedWorkflowId}>
+              <SelectTrigger id="workflow">
+                <SelectValue placeholder="Sin flujo asignado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin flujo asignado</SelectItem>
+                {workflows.map((wf) => (
+                  <SelectItem key={wf.id} value={wf.id}>
+                    {wf.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
