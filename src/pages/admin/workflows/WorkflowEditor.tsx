@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import { ArrowLeft, Plus, Trash2, Save, Loader2, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
-import { WorkflowTemplate, WorkflowStep, APPROVAL_ROLES } from '@/types/database';
+import { WorkflowTemplate, WorkflowStep } from '@/types/database';
 
 export default function WorkflowEditor() {
     const { id } = useParams<{ id: string }>();
@@ -26,12 +26,32 @@ export default function WorkflowEditor() {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [steps, setSteps] = useState<Partial<WorkflowStep>[]>([]);
+    const [availableRoles, setAvailableRoles] = useState<{ key: string; label: string }[]>([]);
 
     const isEditing = !!id;
 
     useEffect(() => {
         if (id) fetchWorkflow();
+        fetchAvailableRoles();
     }, [id]);
+
+    const fetchAvailableRoles = async () => {
+        const { data } = await supabase
+            .from('role_definitions')
+            .select('role_key, display_name')
+            .eq('can_approve', true)
+            .order('display_name');
+        if (data && data.length > 0) {
+            setAvailableRoles(data.map((r: any) => ({ key: r.role_key, label: r.display_name })));
+        } else {
+            // Fallback to hardcoded roles if table doesn't exist yet
+            setAvailableRoles([
+                { key: 'gerencia', label: 'Gerencia' },
+                { key: 'procesos', label: 'Procesos' },
+                { key: 'integridad_datos', label: 'Integridad de Datos' },
+            ]);
+        }
+    };
 
     const fetchWorkflow = async () => {
         try {
@@ -247,9 +267,9 @@ export default function WorkflowEditor() {
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            {APPROVAL_ROLES.map((role) => (
-                                                                <SelectItem key={role} value={role}>
-                                                                    {role.charAt(0).toUpperCase() + role.slice(1).replace('_', ' ')}
+                                                            {availableRoles.map((role) => (
+                                                                <SelectItem key={role.key} value={role.key}>
+                                                                    {role.label}
                                                                 </SelectItem>
                                                             ))}
                                                         </SelectContent>

@@ -28,6 +28,7 @@ import NotificationSettings from "./pages/admin/NotificationSettings";
 import GroupsList from "./pages/admin/GroupsList";
 import WorkflowList from "./pages/admin/workflows/WorkflowList";
 import WorkflowEditor from "./pages/admin/workflows/WorkflowEditor";
+import RolesList from "./pages/admin/RolesList";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ChangePassword from "./pages/ChangePassword";
@@ -76,6 +77,7 @@ const App = () => (
               <Route path="/admin/workflows" element={<WorkflowList />} />
               <Route path="/admin/workflows/new" element={<WorkflowEditor />} />
               <Route path="/admin/workflows/:id" element={<WorkflowEditor />} />
+              <Route path="/admin/roles" element={<RolesList />} />
               <Route path="/change-password" element={<ChangePassword />} />
             </Route>
 
