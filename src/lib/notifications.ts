@@ -17,7 +17,7 @@ interface NotifyParams {
 export function sendNotification(params: NotifyParams): void {
   const body = {
     ...params,
-    baseUrl: "https://gestionescompras.lovable.app"
+    baseUrl: "https://gestiones-compras.vercel.app"
   };
 
   supabase.functions
