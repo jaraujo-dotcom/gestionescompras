@@ -59,7 +59,8 @@ export default function NewRequest() {
       return false;
     }
 
-    if (submit && fields.length > 0) {
+    // Always validate form fields (both save and submit)
+    if (fields.length > 0) {
       const { valid, errors } = validateDynamicForm(fields, formValues);
       if (!valid) {
         const firstError = Object.values(errors)[0];
