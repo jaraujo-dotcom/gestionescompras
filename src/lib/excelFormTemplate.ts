@@ -50,14 +50,20 @@ export async function downloadFormTemplate(
 
     // Add data validation hints
     if (field.field_type === 'select' && field.options_json?.length) {
-      row.getCell(2).dataValidation = {
-        type: 'list',
-        allowBlank: !field.is_required,
-        formulae: [`"${field.options_json.join(',')}"`],
-        showErrorMessage: true,
-        errorTitle: 'Valor inválido',
-        error: `Seleccione una opción válida: ${field.options_json.join(', ')}`,
-      };
+      const optionStr = field.options_json.join(',');
+      // Excel data validation formula has a 255 char limit
+      if (optionStr.length <= 250) {
+        row.getCell(2).dataValidation = {
+          type: 'list',
+          allowBlank: !field.is_required,
+          formulae: [`"${optionStr}"`],
+          showErrorMessage: true,
+          errorTitle: 'Valor inválido',
+          error: `Seleccione una opción válida`,
+        };
+      } else {
+        row.getCell(2).note = `Opciones: ${field.options_json.join(', ')}`;
+      }
     } else if (field.field_type === 'boolean') {
       row.getCell(2).dataValidation = {
         type: 'list',
@@ -128,7 +134,7 @@ export async function downloadFormTemplate(
 
     // Add 10 empty rows for data entry
     for (let i = 0; i < 10; i++) {
-      const emptyRow = sheet.addRow(cols.map(() => null));
+      const emptyRow = sheet.addRow(cols.map(() => ''));
       // Add data validation and formatting per column
       cols.forEach((col, colIdx) => {
         const cell = emptyRow.getCell(colIdx + 1);
@@ -137,11 +143,14 @@ export async function downloadFormTemplate(
           cell.numFmt = '@';
         }
         if (col.type === 'select' && col.options?.length) {
-          cell.dataValidation = {
-            type: 'list',
-            allowBlank: !col.required,
-            formulae: [`"${col.options.join(',')}"`],
-          };
+          const optStr = col.options.join(',');
+          if (optStr.length <= 250) {
+            cell.dataValidation = {
+              type: 'list',
+              allowBlank: !col.required,
+              formulae: [`"${optStr}"`],
+            };
+          }
         } else if (col.type === 'boolean') {
           cell.dataValidation = {
             type: 'list',
