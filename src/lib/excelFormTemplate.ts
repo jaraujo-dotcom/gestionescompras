@@ -1,15 +1,21 @@
 import ExcelJS from 'exceljs';
 import { FormField, TableColumnSchema } from '@/types/database';
+import { normalizeRules, shouldShowField as shouldShowFieldFromRules } from '@/lib/rules';
+
+function isFieldVisible(field: FormField, values: Record<string, unknown>): boolean {
+  return shouldShowFieldFromRules(normalizeRules(field.dependency_json), values);
+}
 
 /**
- * Generate a downloadable Excel template from form fields.
- * - Non-table fields go into a "Datos" sheet as key-value pairs (Label | Value).
- * - Table fields get their own sheet with column headers.
+ * Generate a downloadable Excel template from visible form fields.
+ * Only includes fields that are currently shown based on dependency rules.
  */
 export async function downloadFormTemplate(
   fields: FormField[],
-  templateName: string
+  templateName: string,
+  currentValues: Record<string, unknown> = {}
 ) {
+  const visibleFields = fields.filter((f) => isFieldVisible(f, currentValues));
   const workbook = new ExcelJS.Workbook();
 
   // --- Main data sheet ---
@@ -27,7 +33,7 @@ export async function downloadFormTemplate(
     cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
   });
 
-  const nonTableFields = fields
+  const nonTableFields = visibleFields
     .filter((f) => f.field_type !== 'table' && f.field_type !== 'file')
     .sort((a, b) => a.field_order - b.field_order);
 
@@ -75,7 +81,7 @@ export async function downloadFormTemplate(
   dataSheet.getColumn(3).hidden = true;
 
   // --- Table fields as separate sheets ---
-  const tableFields = fields
+  const tableFields = visibleFields
     .filter((f) => f.field_type === 'table')
     .sort((a, b) => a.field_order - b.field_order);
 
