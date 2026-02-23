@@ -192,7 +192,7 @@ export default function EditRequest() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => downloadFormTemplate(fields, request.title)}
+              onClick={() => downloadFormTemplate(fields, request.title, formValues)}
             >
               <Download className="w-4 h-4 mr-1" />
               Descargar Plantilla Excel
