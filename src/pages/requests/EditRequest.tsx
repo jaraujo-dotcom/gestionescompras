@@ -214,9 +214,20 @@ export default function EditRequest() {
                   if (!file) return;
                   try {
                     const parsed = await parseExcelFormData(file, fields);
-                    setFormValues((prev) => ({ ...prev, ...parsed }));
+                    const merged = { ...formValues, ...parsed };
+                    setFormValues(merged);
                     const count = Object.keys(parsed).length;
-                    toast.success(`${count} campo(s) cargado(s) desde Excel`);
+                    const { valid, errors } = validateDynamicForm(fields, merged);
+                    if (!valid) {
+                      const errorCount = Object.keys(errors).length;
+                      const msgs = Object.values(errors).slice(0, 5);
+                      toast.warning(
+                        `${count} campo(s) cargado(s), pero ${errorCount} error(es):\n${msgs.join('\n')}${errorCount > 5 ? '\n...y ' + (errorCount - 5) + ' más' : ''}`,
+                        { duration: 8000 }
+                      );
+                    } else {
+                      toast.success(`${count} campo(s) cargado(s) correctamente`);
+                    }
                   } catch (err) {
                     console.error('Error parsing Excel:', err);
                     toast.error('Error al leer el archivo Excel');
