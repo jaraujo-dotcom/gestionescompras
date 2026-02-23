@@ -79,11 +79,19 @@ export async function downloadFormTemplate(
     .filter((f) => f.field_type === 'table')
     .sort((a, b) => a.field_order - b.field_order);
 
+  const usedSheetNames = new Set<string>(['Datos']);
+
   for (const tf of tableFields) {
     const cols: TableColumnSchema[] = tf.table_schema_json || [];
     if (cols.length === 0) continue;
 
-    const sheetName = tf.label.substring(0, 28); // Excel limit is 31 chars
+    let sheetName = tf.label.substring(0, 28);
+    let counter = 1;
+    while (usedSheetNames.has(sheetName)) {
+      sheetName = `${tf.label.substring(0, 25)}_${counter++}`;
+    }
+    usedSheetNames.add(sheetName);
+
     const sheet = workbook.addWorksheet(sheetName);
 
     // Store field_key in cell A1 of a hidden row or as sheet property
