@@ -43,6 +43,11 @@ export async function downloadFormTemplate(
     row.getCell(3).value = field.field_key;
     row.getCell(3).font = { color: { argb: 'FF999999' } };
 
+    // Force text format for text and select fields to preserve leading zeros
+    if (field.field_type === 'text' || field.field_type === 'select') {
+      row.getCell(2).numFmt = '@';
+    }
+
     // Add data validation hints
     if (field.field_type === 'select' && field.options_json?.length) {
       row.getCell(2).dataValidation = {
@@ -123,10 +128,14 @@ export async function downloadFormTemplate(
 
     // Add 10 empty rows for data entry
     for (let i = 0; i < 10; i++) {
-      const emptyRow = sheet.addRow(cols.map(() => ''));
-      // Add data validation per column
+      const emptyRow = sheet.addRow(cols.map(() => null));
+      // Add data validation and formatting per column
       cols.forEach((col, colIdx) => {
         const cell = emptyRow.getCell(colIdx + 1);
+        // Force text format for text and select columns to preserve leading zeros
+        if (col.type === 'text' || col.type === 'select') {
+          cell.numFmt = '@';
+        }
         if (col.type === 'select' && col.options?.length) {
           cell.dataValidation = {
             type: 'list',
@@ -287,10 +296,24 @@ function parseCellValue(
 ): unknown {
   if (raw === null || raw === undefined) return null;
 
+  // Handle ExcelJS rich text objects
+  if (typeof raw === 'object' && 'richText' in (raw as any)) {
+    raw = (raw as any).richText?.map((r: any) => r.text).join('') || '';
+  }
+
+  // Handle ExcelJS formula results
+  if (typeof raw === 'object' && 'result' in (raw as any)) {
+    raw = (raw as any).result;
+  }
+
+  // Empty string check
+  const strVal = String(raw).trim();
+  if (strVal === '') return null;
+
   switch (fieldType) {
     case 'boolean': {
       if (typeof raw === 'boolean') return raw;
-      const str = String(raw).toLowerCase().trim();
+      const str = strVal.toLowerCase();
       if (str === 'sí' || str === 'si' || str === 'true' || str === '1') return true;
       if (str === 'no' || str === 'false' || str === '0') return false;
       return null;
@@ -304,15 +327,14 @@ function parseCellValue(
       if (raw instanceof Date) {
         return raw.toISOString().split('T')[0];
       }
-      const str = String(raw).trim();
-      // Try parsing as date
-      const d = new Date(str);
+      const d = new Date(strVal);
       if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-      return str || null;
+      return strVal || null;
     }
     case 'select':
     case 'text':
     default:
-      return String(raw).trim() || null;
+      // Always return as string to preserve leading zeros
+      return strVal || null;
   }
 }
