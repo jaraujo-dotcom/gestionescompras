@@ -156,14 +156,32 @@ export function validateDynamicForm(
         const rows = value as Record<string, unknown>[];
         for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
           for (const col of columns) {
-            if (col.validation) {
-              const cellVal = rows[rowIdx][col.key];
-              if (cellVal !== undefined && cellVal !== null && cellVal !== '') {
-                const cellError = validateCellValue(cellVal, col.type, parseValidation(col.validation));
-                if (cellError) {
-                  errors[field.field_key] = errors[field.field_key] ||
-                    `${field.label}, fila ${rowIdx + 1}, ${col.label}: ${cellError}`;
+            const cellVal = rows[rowIdx][col.key];
+
+            // Check required columns have values
+            if (col.required) {
+              if (cellVal === undefined || cellVal === null || cellVal === '') {
+                if (!errors[field.field_key]) {
+                  errors[field.field_key] = `${field.label}, fila ${rowIdx + 1}, ${col.label}: es requerido`;
                 }
+              }
+            }
+
+            // Check column validations
+            if (col.validation && cellVal !== undefined && cellVal !== null && cellVal !== '') {
+              const cellError = validateCellValue(cellVal, col.type, parseValidation(col.validation));
+              if (cellError) {
+                errors[field.field_key] = errors[field.field_key] ||
+                  `${field.label}, fila ${rowIdx + 1}, ${col.label}: ${cellError}`;
+              }
+            }
+
+            // Check select columns have valid option
+            if (col.type === 'select' && col.options?.length && cellVal !== undefined && cellVal !== null && cellVal !== '') {
+              const strVal = String(cellVal).trim();
+              if (!col.options.includes(strVal)) {
+                errors[field.field_key] = errors[field.field_key] ||
+                  `${field.label}, fila ${rowIdx + 1}, ${col.label}: "${strVal}" no es una opción válida`;
               }
             }
           }
