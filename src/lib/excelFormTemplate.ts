@@ -220,9 +220,22 @@ export async function parseExcelFormData(
 
       let cellValue = parseCellValue(rawValue, field.field_type);
 
+      // Debug: log raw and parsed values for select fields
+      if (field.field_type === 'select') {
+        console.log(`[Excel Import] Select field "${field.label}" (${field.field_key}):`, {
+          rawValue,
+          rawType: typeof rawValue,
+          parsedValue: cellValue,
+          parsedType: typeof cellValue,
+          options: field.options_json,
+        });
+      }
+
       // For select fields, try to match against available options
       if (field.field_type === 'select' && cellValue != null && field.options_json?.length) {
+        const before = cellValue;
         cellValue = matchSelectOption(cellValue, field.options_json);
+        console.log(`[Excel Import] matchSelectOption: "${before}" -> "${cellValue}"`);
       }
 
       if (cellValue !== null && cellValue !== undefined && cellValue !== '') {
