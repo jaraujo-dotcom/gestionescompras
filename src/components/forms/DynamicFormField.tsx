@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FormField, FieldRule, FieldDependency, TableColumnSchema } from '@/types/database';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -372,23 +372,36 @@ export function DynamicFormField({
 }: DynamicFormFieldProps) {
   const [fieldError, setFieldError] = useState<string | null>(null);
 
-  if (!shouldShowField(field.dependency_json, allValues)) {
-    return null;
-  }
-
+  const isVisible = shouldShowField(field.dependency_json, allValues);
   const isRequired = isFieldRequired(field, allValues);
-  const labelText = `${field.label}${isRequired ? ' *' : ''}`;
-
-  // Get dynamic options for select fields
   const rules = normalizeRules(field.dependency_json);
   const dynamicOptions = getFieldDynamicOptions(rules, allValues);
   const selectOptions = dynamicOptions ?? (field.options_json || []);
   const validation = parseValidation(field.validation_json);
   const validationHint = describeValidation(field.field_type, validation);
 
+  // Validate when value changes externally (e.g. Excel import)
+  useEffect(() => {
+    if (readOnly || !isVisible || !value || value === '') {
+      setFieldError(null);
+      return;
+    }
+    if (validation) {
+      const error = validateFieldValue(value, field.field_type, validation);
+      setFieldError(error);
+    } else {
+      setFieldError(null);
+    }
+  }, [value]);
+
+  if (!isVisible) {
+    return null;
+  }
+
+  const labelText = `${field.label}${isRequired ? ' *' : ''}`;
+
   const handleChange = (key: string, newValue: unknown) => {
     onChange(key, newValue);
-    // Validate on change
     if (validation && !readOnly) {
       const error = validateFieldValue(newValue, field.field_type, validation);
       setFieldError(error);
