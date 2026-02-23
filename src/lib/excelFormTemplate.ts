@@ -359,6 +359,21 @@ function matchSelectOption(value: unknown, options: string[]): unknown {
   const startsMatch = options.find((o) => o.trim().startsWith(strVal));
   if (startsMatch) return startsMatch;
 
+  // Try endsWith / contains match (e.g., user typed "Beval" and option is "00001 - Beval")
+  const containsMatch = options.find((o) => {
+    const optLower = o.trim().toLowerCase();
+    // Check if option ends with the value (after a separator like " - ")
+    if (optLower.endsWith(lower)) return true;
+    // Check if option contains the value as a distinct segment
+    if (optLower.includes(` - ${lower}`) || optLower.includes(` ${lower}`)) return true;
+    return false;
+  });
+  if (containsMatch) return containsMatch;
+
+  // Try if the value contains an option (e.g., user typed full description but option is just a code)
+  const reverseMatch = options.find((o) => lower.includes(o.trim().toLowerCase()));
+  if (reverseMatch) return reverseMatch;
+
   // Return original string if no match found — log for debugging
   console.warn(`[Excel Import] No matching option for value "${strVal}" in options:`, options);
   return strVal;
