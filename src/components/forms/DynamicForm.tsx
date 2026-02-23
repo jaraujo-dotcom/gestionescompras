@@ -133,6 +133,14 @@ export function validateDynamicForm(
         errors[field.field_key] = `${field.label} debe ser un número válido`;
       }
 
+      // Validate select fields: value must be one of the available options
+      if (field.field_type === 'select' && field.options_json?.length) {
+        const strVal = String(value).trim();
+        if (!field.options_json.includes(strVal)) {
+          errors[field.field_key] = `${field.label}: el valor "${strVal}" no es una opción válida`;
+        }
+      }
+
       const validation = parseValidation(field.validation_json);
       if (validation && field.field_type !== 'table') {
         const validationError = validateFieldValue(value, field.field_type, validation);
