@@ -26,28 +26,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Set up auth listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      async (event, newSession) => {
+        console.log('[Auth] Event:', event, 'Has session:', !!newSession);
 
-        if (session?.user) {
-          setTimeout(async () => {
-            await fetchUserData(session.user.id);
-          }, 0);
-        } else {
+        // Ignore TOKEN_REFRESHED if we already have the same session
+        if (event === 'TOKEN_REFRESHED' && newSession?.user?.id === user?.id) {
+          setSession(newSession);
+          return;
+        }
+
+        // Only clear state on explicit SIGNED_OUT, not on transient errors
+        if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
           setProfile(null);
           setRoles([]);
+          setLoading(false);
+          return;
         }
-        setLoading(false);
+
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+
+        if (newSession?.user) {
+          // Use setTimeout to avoid Supabase deadlock on auth state change
+          setTimeout(async () => {
+            await fetchUserData(newSession.user.id);
+          }, 0);
+        } else if (event === 'INITIAL_SESSION' && !newSession) {
+          // Only clear on initial load with no session
+          setProfile(null);
+          setRoles([]);
+          setLoading(false);
+        }
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserData(session.user.id);
+    // Then get initial session
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (initialSession?.user) {
+        setSession(initialSession);
+        setUser(initialSession.user);
+        fetchUserData(initialSession.user.id);
       } else {
         setLoading(false);
       }
