@@ -25,6 +25,7 @@ interface DynamicFormFieldProps {
   onChange: (key: string, value: unknown) => void;
   allValues: Record<string, unknown>;
   readOnly?: boolean;
+  externalError?: string | null;
 }
 
 // Public helpers used by DynamicForm and DynamicFormView
@@ -369,6 +370,7 @@ export function DynamicFormField({
   onChange,
   allValues,
   readOnly = false,
+  externalError = null,
 }: DynamicFormFieldProps) {
   const [fieldError, setFieldError] = useState<string | null>(null);
 
@@ -522,7 +524,7 @@ export function DynamicFormField({
         <p className="text-xs text-muted-foreground">{validationHint}</p>
       )}
       {renderField()}
-      {fieldError && <p className="text-xs text-destructive">{fieldError}</p>}
+      {(fieldError || externalError) && <p className="text-xs text-destructive">{fieldError || externalError}</p>}
     </div>
   );
 }

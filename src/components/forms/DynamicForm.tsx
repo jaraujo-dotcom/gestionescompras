@@ -11,9 +11,10 @@ interface DynamicFormProps {
   values: Record<string, unknown>;
   onChange: (values: Record<string, unknown>) => void;
   readOnly?: boolean;
+  errors?: Record<string, string>;
 }
 
-export function DynamicForm({ fields, sections = [], values, onChange, readOnly = false }: DynamicFormProps) {
+export function DynamicForm({ fields, sections = [], values, onChange, readOnly = false, errors = {} }: DynamicFormProps) {
   const sortedFields = [...fields].sort((a, b) => a.field_order - b.field_order);
   const sortedSections = [...sections].sort((a, b) => a.section_order - b.section_order);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
@@ -35,6 +36,7 @@ export function DynamicForm({ fields, sections = [], values, onChange, readOnly 
         onChange={handleFieldChange}
         allValues={values}
         readOnly={readOnly}
+        externalError={errors[field.field_key] || null}
       />
     ));
 
