@@ -218,7 +218,13 @@ export async function parseExcelFormData(
       const field = fieldByKey.get(fieldKey) || fieldByLabel.get(rawLabel);
       if (!field || field.field_type === 'table' || field.field_type === 'file') return;
 
-      const cellValue = parseCellValue(rawValue, field.field_type);
+      let cellValue = parseCellValue(rawValue, field.field_type);
+
+      // For select fields, try to match against available options
+      if (field.field_type === 'select' && cellValue != null && field.options_json?.length) {
+        cellValue = matchSelectOption(cellValue, field.options_json);
+      }
+
       if (cellValue !== null && cellValue !== undefined && cellValue !== '') {
         values[field.field_key] = cellValue;
       }
@@ -279,7 +285,11 @@ export async function parseExcelFormData(
 
       cols.forEach((col, idx) => {
         const key = hasKeyRow ? colKeys[idx] : col.key;
-        const cellValue = parseCellValue(row.getCell(idx + 1).value, col.type);
+        let cellValue = parseCellValue(row.getCell(idx + 1).value, col.type);
+        // Match select options for table columns
+        if (col.type === 'select' && cellValue != null && col.options?.length) {
+          cellValue = matchSelectOption(cellValue, col.options);
+        }
         rowData[key] = cellValue ?? (col.type === 'boolean' ? false : '');
         if (cellValue !== null && cellValue !== undefined && cellValue !== '' && cellValue !== false) {
           hasData = true;
@@ -297,6 +307,31 @@ export async function parseExcelFormData(
   }
 
   return values;
+}
+
+/**
+ * Try to match a parsed cell value against available select options.
+ * Handles cases where Excel converts "00123" to number 123.
+ */
+function matchSelectOption(value: unknown, options: string[]): unknown {
+  const strVal = String(value).trim();
+  // Exact match first
+  if (options.includes(strVal)) return strVal;
+  // Try matching by trimming options
+  const trimmed = options.find((o) => o.trim() === strVal);
+  if (trimmed) return trimmed;
+  // Try case-insensitive
+  const lower = strVal.toLowerCase();
+  const caseMatch = options.find((o) => o.toLowerCase() === lower);
+  if (caseMatch) return caseMatch;
+  // Try numeric match: if value is "123", find option that equals "00123" (numeric equivalence)
+  const numVal = Number(strVal);
+  if (!isNaN(numVal)) {
+    const numMatch = options.find((o) => Number(o) === numVal && !isNaN(Number(o)));
+    if (numMatch) return numMatch;
+  }
+  // Return original string if no match found
+  return strVal;
 }
 
 function parseCellValue(
