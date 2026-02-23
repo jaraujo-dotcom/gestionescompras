@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DynamicForm, validateDynamicForm } from '@/components/forms/DynamicForm';
 import { Request, FormField, FormSection, FieldDependency, TableColumnSchema } from '@/types/database';
-import { ArrowLeft, Save, Send, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Send, Loader2, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { sendNotification } from '@/lib/notifications';
+import { downloadFormTemplate, parseExcelFormData } from '@/lib/excelFormTemplate';
 
 export default function EditRequest() {
   const { id } = useParams<{ id: string }>();
@@ -186,19 +187,58 @@ export default function EditRequest() {
       </Card>
 
       {fields.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Datos del Formulario</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DynamicForm
-              fields={fields}
-              sections={sections}
-              values={formValues}
-              onChange={setFormValues}
-            />
-          </CardContent>
-        </Card>
+        <>
+          <div className="flex items-center gap-2 justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadFormTemplate(fields, request.title)}
+            >
+              <Download className="w-4 h-4 mr-1" />
+              Descargar Plantilla Excel
+            </Button>
+            <label className="cursor-pointer">
+              <Button variant="outline" size="sm" asChild>
+                <span>
+                  <Upload className="w-4 h-4 mr-1" />
+                  Cargar desde Excel
+                </span>
+              </Button>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const parsed = await parseExcelFormData(file, fields);
+                    setFormValues((prev) => ({ ...prev, ...parsed }));
+                    const count = Object.keys(parsed).length;
+                    toast.success(`${count} campo(s) cargado(s) desde Excel`);
+                  } catch (err) {
+                    console.error('Error parsing Excel:', err);
+                    toast.error('Error al leer el archivo Excel');
+                  }
+                  e.target.value = '';
+                }}
+              />
+            </label>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Datos del Formulario</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DynamicForm
+                fields={fields}
+                sections={sections}
+                values={formValues}
+                onChange={setFormValues}
+              />
+            </CardContent>
+          </Card>
+        </>
       )}
 
       <div className="flex justify-end gap-3">
