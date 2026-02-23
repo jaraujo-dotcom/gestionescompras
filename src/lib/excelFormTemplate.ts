@@ -322,15 +322,32 @@ function matchSelectOption(value: unknown, options: string[]): unknown {
   if (trimmed) return trimmed;
   // Try case-insensitive
   const lower = strVal.toLowerCase();
-  const caseMatch = options.find((o) => o.toLowerCase() === lower);
+  const caseMatch = options.find((o) => o.toLowerCase().trim() === lower);
   if (caseMatch) return caseMatch;
-  // Try numeric match: if value is "123", find option that equals "00123" (numeric equivalence)
+
+  // Try zero-padding: pad the value with leading zeros to match option lengths
   const numVal = Number(strVal);
-  if (!isNaN(numVal)) {
-    const numMatch = options.find((o) => Number(o) === numVal && !isNaN(Number(o)));
-    if (numMatch) return numMatch;
+  if (!isNaN(numVal) && strVal !== '') {
+    for (const opt of options) {
+      const optTrimmed = opt.trim();
+      // Check if option is purely numeric (possibly with leading zeros)
+      if (/^\d+$/.test(optTrimmed) && Number(optTrimmed) === numVal) {
+        return opt;
+      }
+      // Check if option starts with the zero-padded number
+      const padded = String(numVal).padStart(optTrimmed.length, '0');
+      if (optTrimmed === padded) {
+        return opt;
+      }
+    }
   }
-  // Return original string if no match found
+
+  // Try startsWith match (for "code - description" patterns)
+  const startsMatch = options.find((o) => o.trim().startsWith(strVal));
+  if (startsMatch) return startsMatch;
+
+  // Return original string if no match found — log for debugging
+  console.warn(`[Excel Import] No matching option for value "${strVal}" in options:`, options);
   return strVal;
 }
 
