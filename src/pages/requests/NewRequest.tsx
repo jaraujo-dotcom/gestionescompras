@@ -298,10 +298,15 @@ export default function NewRequest() {
                   if (!file) return;
                   try {
                     const parsed = await parseExcelFormData(file, fields);
+                    console.log('[Excel Import] Parsed values:', JSON.stringify(parsed));
+                    console.log('[Excel Import] Fields count:', fields.length);
+                    console.log('[Excel Import] Required fields:', fields.filter(f => f.is_required).map(f => `${f.field_key} (${f.label})`));
                     const merged = { ...formValues, ...parsed };
+                    console.log('[Excel Import] Merged values:', JSON.stringify(merged));
                     setFormValues(merged);
                     const count = Object.keys(parsed).length;
                     const { valid, errors } = validateDynamicForm(fields, merged);
+                    console.log('[Excel Import] Validation result:', { valid, errors });
                     setFormErrors(errors);
                     if (!valid) {
                       const errorCount = Object.keys(errors).length;
