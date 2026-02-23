@@ -24,6 +24,7 @@ export default function EditRequest() {
   const [sections, setSections] = useState<FormSection[]>([]);
   const [title, setTitle] = useState('');
   const [formValues, setFormValues] = useState<Record<string, unknown>>({});
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (id) fetchRequestData();
@@ -82,6 +83,7 @@ export default function EditRequest() {
     // Always validate form fields (both save and submit)
     if (fields.length > 0) {
       const { valid, errors } = validateDynamicForm(fields, formValues);
+      setFormErrors(errors);
       if (!valid) {
         const firstError = Object.values(errors)[0];
         toast.error(firstError);
@@ -218,6 +220,7 @@ export default function EditRequest() {
                     setFormValues(merged);
                     const count = Object.keys(parsed).length;
                     const { valid, errors } = validateDynamicForm(fields, merged);
+                    setFormErrors(errors);
                     if (!valid) {
                       const errorCount = Object.keys(errors).length;
                       const msgs = Object.values(errors).slice(0, 5);
@@ -246,7 +249,8 @@ export default function EditRequest() {
                 fields={fields}
                 sections={sections}
                 values={formValues}
-                onChange={setFormValues}
+                onChange={(v) => { setFormValues(v); setFormErrors({}); }}
+                errors={formErrors}
               />
             </CardContent>
           </Card>

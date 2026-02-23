@@ -21,6 +21,7 @@ export default function NewRequest() {
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState('');
   const [formValues, setFormValues] = useState<Record<string, unknown>>({});
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [userGroups, setUserGroups] = useState<{ id: string; name: string }[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
@@ -62,6 +63,7 @@ export default function NewRequest() {
     // Always validate form fields (both save and submit)
     if (fields.length > 0) {
       const { valid, errors } = validateDynamicForm(fields, formValues);
+      setFormErrors(errors);
       if (!valid) {
         const firstError = Object.values(errors)[0];
         toast.error(firstError);
@@ -300,6 +302,7 @@ export default function NewRequest() {
                     setFormValues(merged);
                     const count = Object.keys(parsed).length;
                     const { valid, errors } = validateDynamicForm(fields, merged);
+                    setFormErrors(errors);
                     if (!valid) {
                       const errorCount = Object.keys(errors).length;
                       const msgs = Object.values(errors).slice(0, 5);
@@ -328,7 +331,8 @@ export default function NewRequest() {
                 fields={fields}
                 sections={sections}
                 values={formValues}
-                onChange={setFormValues}
+                onChange={(v) => { setFormValues(v); setFormErrors({}); }}
+                errors={formErrors}
               />
             </CardContent>
           </Card>
