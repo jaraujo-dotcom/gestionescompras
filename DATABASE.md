@@ -26,7 +26,8 @@ auth.users ──trigger──> profiles
             role_definitions
 
 form_templates ──> form_sections ──> form_fields
-       │
+       │     │
+       │     └──> groups (executor_group_id)
        ▼
 workflow_templates ──> workflow_steps
 
@@ -57,11 +58,19 @@ notification_events ──> notification_configs
 
 | Tabla | Descripción | Columnas Clave |
 |-------|-------------|----------------|
-| `form_templates` | Plantillas de formulario | `id`, `name`, `is_active`, `default_workflow_id` |
+| `form_templates` | Plantillas de formulario | `id`, `name`, `is_active`, `default_workflow_id`, `executor_group_id` |
 | `form_sections` | Secciones dentro de una plantilla | `template_id`, `name`, `section_order`, `is_collapsible` |
 | `form_fields` | Campos de un formulario | `template_id`, `section_id`, `field_key`, `field_type` (enum), `is_required`, `options_json`, `table_schema_json`, `dependency_json`, `validation_json` |
 
 **Tipos de campo** (`field_type` enum): `text`, `number`, `date`, `select`, `boolean`, `table`, `file`
+
+#### Grupo Ejecutor (`executor_group_id`)
+
+Cada plantilla puede tener un **grupo ejecutor** asignado (FK a `groups`). Esto determina qué ejecutores pueden ver, gestionar y recibir notificaciones de las solicitudes creadas con esa plantilla. Los ejecutores que pertenezcan al grupo ejecutor pueden ver las solicitudes de ese tipo incluso si no están en los estados habituales de ejecución.
+
+#### Plantillas sin Flujo de Aprobación
+
+Si una plantilla **no tiene** `default_workflow_id` asignado, las solicitudes creadas con ella **saltan el proceso de aprobación** y pasan directamente al estado `en_ejecucion` al ser enviadas por el solicitante.
 
 ### 2.3 Dominio: Solicitudes
 
@@ -107,7 +116,7 @@ Los roles se definen con el enum `app_role` y se asignan en la tabla `user_roles
 | Gerencia | `gerencia` | Aprueba solicitudes **solo de sus grupos**. Primer nivel de aprobación. |
 | Procesos | `procesos` | Aprueba solicitudes a nivel de procesos. Acceso global (no borradores). |
 | Integridad de Datos | `integridad_datos` | Aprueba solicitudes verificando integridad. Acceso global (no borradores). |
-| Ejecutor | `ejecutor` | Ejecuta solicitudes aprobadas. Solo ve solicitudes en estado `aprobada` en adelante. |
+| Ejecutor | `ejecutor` | Ejecuta solicitudes aprobadas. Ve solicitudes en estado `aprobada` en adelante. **Si pertenece al grupo ejecutor** de una plantilla, puede ver todas las solicitudes de ese tipo (excepto borradores). |
 | Administrador | `administrador` | Acceso total a todo el sistema. Puede actuar en nombre de cualquier rol de aprobación. |
 
 ### Tabla `role_definitions`
@@ -125,15 +134,21 @@ Todas las tablas tienen **Row Level Security (RLS)** habilitado. La visibilidad 
 ```sql
 -- Lógica simplificada:
 SELECT EXISTS (
-  SELECT 1 FROM requests r WHERE r.id = _request_id AND (
+  SELECT 1 FROM requests r
+  LEFT JOIN form_templates ft ON ft.id = r.template_id
+  WHERE r.id = _request_id AND (
     r.created_by = _user_id                                    -- Creador siempre ve la suya
     OR (r.group_id IS NOT NULL 
         AND user_in_group(_user_id, r.group_id))               -- Miembros del mismo grupo
     OR (has_role('revisor') AND status != 'borrador')           -- Revisor: todo menos borradores
     OR (has_role('procesos') AND status != 'borrador')          -- Procesos: todo menos borradores
     OR (has_role('integridad_datos') AND status != 'borrador')  -- Integridad: todo menos borradores
-    OR (has_role('ejecutor') AND status IN 
-        ('aprobada','en_ejecucion','en_espera','completada','anulada'))  -- Ejecutor: desde aprobada
+    OR (has_role('ejecutor') AND (
+        status IN ('aprobada','en_ejecucion','en_espera','completada','anulada')
+        OR (ft.executor_group_id IS NOT NULL                   -- Ejecutor del grupo ejecutor:
+            AND user_in_group(_user_id, ft.executor_group_id)  -- ve todo excepto borradores
+            AND status != 'borrador')
+    ))
     OR has_role('administrador')                                -- Admin: todo
   )
 );
@@ -149,10 +164,13 @@ SELECT EXISTS (
 | **Revisor** | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Procesos** | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Integridad Datos** | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Ejecutor** | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| **Ejecutor** (sin grupo ejecutor) | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| **Ejecutor** (en grupo ejecutor de la plantilla) | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Administrador** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 > **Nota sobre Gerencia**: Su visibilidad depende de pertenecer al mismo `group_id` de la solicitud via `user_groups`. No tiene acceso global.
+>
+> **Nota sobre Ejecutor con grupo ejecutor**: Si la plantilla de la solicitud tiene un `executor_group_id` y el ejecutor pertenece a ese grupo, puede ver la solicitud en cualquier estado excepto `borrador`.
 
 ### Funciones auxiliares de seguridad
 
@@ -217,7 +235,9 @@ SELECT EXISTS (
 
 ### Flujo de Aprobación Multi-Nivel
 
-1. Al enviar una solicitud (`borrador` → `en_revision`), se instancian los pasos del workflow asociado en `request_workflow_steps`.
+1. Al enviar una solicitud, el sistema verifica si la plantilla tiene un workflow asignado (`default_workflow_id`):
+   - **Con workflow**: La solicitud pasa a `en_revision` y se instancian los pasos en `request_workflow_steps`.
+   - **Sin workflow**: La solicitud pasa **directamente a `en_ejecucion`**, saltando todo el proceso de aprobación.
 2. Cada paso tiene un `role_name` y `step_order`. Los pasos con el **mismo `step_order`** se ejecutan en **paralelo**.
 3. Los aprobadores con el rol correspondiente pueden aprobar/rechazar/devolver su paso.
 4. Las decisiones se registran en `request_approvals` (histórico) y se actualizan en `request_workflow_steps` (estado actual).
