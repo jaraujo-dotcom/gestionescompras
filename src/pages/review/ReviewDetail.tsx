@@ -135,18 +135,31 @@ export default function ReviewDetail() {
     }
   };
 
-  // Determine current active step
-  const getCurrentStep = () => {
-    return workflowSteps.find(s => s.status === 'pending') || null;
+  // Determine the current active level (lowest step_order with at least one pending)
+  const getCurrentLevel = (): number | null => {
+    const pendingSteps = workflowSteps.filter(s => s.status === 'pending');
+    if (pendingSteps.length === 0) return null;
+    return Math.min(...pendingSteps.map(s => s.step_order));
   };
 
-  const currentStep = getCurrentStep();
+  const currentLevel = getCurrentLevel();
 
-  // Check if current user can act on the current step
+  // All pending steps at the current level (parallel steps the user can act on)
+  const currentLevelSteps = currentLevel !== null
+    ? workflowSteps.filter(s => s.step_order === currentLevel && s.status === 'pending')
+    : [];
+
+  // The step the current user can act on (match by role)
+  const myCurrentStep = currentLevelSteps.find(
+    s => hasRole(s.role_name as any) || hasRole('administrador')
+  ) || null;
+
+  // Keep backward compat alias
+  const currentStep = myCurrentStep;
+
   const canAct = !!(
     request?.status === 'en_revision' &&
-    currentStep &&
-    (hasRole(currentStep.role_name as any) || hasRole('administrador'))
+    myCurrentStep
   );
 
   const openDialog = (selectedAction: ReviewAction) => {
@@ -177,11 +190,15 @@ export default function ReviewDetail() {
 
         if (error) throw error;
 
-        // Check if there are more steps
-        const nextStep = workflowSteps.find(s => s.step_order > currentStep.step_order);
+        // Check if all parallel steps at this level are now approved
+        const siblingSteps = workflowSteps.filter(s => s.step_order === currentStep.step_order && s.id !== currentStep.id);
+        const allSiblingsApproved = siblingSteps.every(s => s.status === 'approved');
 
-        if (!nextStep) {
-          // No more steps -> Fully Approved
+        // Check if there are steps at higher levels
+        const hasNextLevel = workflowSteps.some(s => s.step_order > currentStep.step_order);
+
+        if (allSiblingsApproved && !hasNextLevel) {
+          // All steps at this level approved and no more levels -> Fully Approved
           await supabase.from('requests').update({ status: 'aprobada' }).eq('id', request.id);
           sendNotification({
             requestId: request.id,
@@ -193,7 +210,10 @@ export default function ReviewDetail() {
           });
           toast.success('Solicitud completamente aprobada');
         } else {
-          // Just this step approved
+          // Step approved, but either siblings pending or next level exists
+          const msg = allSiblingsApproved
+            ? `Nivel completado. Avanza al siguiente nivel.`
+            : `Paso "${currentStep.label}" aprobado. Faltan aprobaciones en este nivel.`;
           sendNotification({
             requestId: request.id,
             eventType: 'status_change',
@@ -201,7 +221,7 @@ export default function ReviewDetail() {
             message: `${profile?.name || 'Usuario'} aprobó el paso "${currentStep.label}".`,
             triggeredBy: user.id,
           });
-          toast.success(`Paso "${currentStep.label}" aprobado`);
+          toast.success(msg);
         }
       }
       else if (action === 'reject') {
@@ -246,10 +266,15 @@ export default function ReviewDetail() {
       }
 
       // Record in history
+      const siblingSteps2 = workflowSteps.filter(s => s.step_order === currentStep.step_order && s.id !== currentStep.id);
+      const allSiblingsApproved2 = siblingSteps2.every(s => s.status === 'approved');
+      const hasNextLevel2 = workflowSteps.some(s => s.step_order > currentStep.step_order);
+      const fullyApproved = action === 'approve' && allSiblingsApproved2 && !hasNextLevel2;
+
       await supabase.from('request_status_history').insert({
         request_id: request.id,
         from_status: request.status,
-        to_status: action === 'approve' && !workflowSteps.find(s => s.step_order > currentStep.step_order) ? 'aprobada' :
+        to_status: fullyApproved ? 'aprobada' :
           action === 'reject' ? 'rechazada' :
             action === 'return' ? 'devuelta' : request.status,
         changed_by: user.id,
@@ -370,31 +395,61 @@ export default function ReviewDetail() {
             {workflowSteps.length === 0 ? (
               <p className="text-muted-foreground">Este solicitud no tiene pasos de aprobación configurados.</p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {workflowSteps.map((step, index) => (
-                  <div
-                    key={step.id}
-                    className={cn(
-                      'p-4 rounded-lg border-2 transition-colors',
-                      step.status === 'approved' && 'border-emerald-300 bg-emerald-50',
-                      step.status === 'rejected' && 'border-red-300 bg-red-50',
-                      step.status === 'pending' && currentStep?.id === step.id && 'border-blue-300 bg-blue-50 ring-1 ring-blue-300',
-                      step.status === 'pending' && currentStep?.id !== step.id && 'border-muted bg-muted/30',
-                    )}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-sm">{index + 1}. {step.label}</span>
-                      {step.status === 'approved' && <CheckCircle className="w-5 h-5 text-emerald-600" />}
-                      {step.status === 'rejected' && <XCircle className="w-5 h-5 text-red-600" />}
-                      {step.status === 'pending' && <Clock className="w-5 h-5 text-muted-foreground" />}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {step.status === 'approved' && `Aprobado por ${step.approverName || 'Usuario'}`}
-                      {step.status === 'pending' && (currentStep?.id === step.id ? 'En espera...' : 'Pendiente')}
-                    </p>
+              (() => {
+                // Group steps by step_order for parallel display
+                const levels: Record<number, typeof workflowSteps> = {};
+                workflowSteps.forEach(s => {
+                  if (!levels[s.step_order]) levels[s.step_order] = [];
+                  levels[s.step_order].push(s);
+                });
+                const sortedLevels = Object.keys(levels).map(Number).sort((a, b) => a - b);
+
+                return (
+                  <div className="space-y-3">
+                    {sortedLevels.map((level, levelIdx) => {
+                      const levelSteps = levels[level];
+                      const isParallel = levelSteps.length > 1;
+                      return (
+                        <div key={level}>
+                          <div className="text-xs font-semibold text-muted-foreground mb-1">
+                            Nivel {levelIdx + 1}{isParallel ? ' (paralelo — todos deben aprobar)' : ''}
+                          </div>
+                          <div className={cn('grid gap-3', isParallel ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1')}>
+                            {levelSteps.map((step) => {
+                              const isMyStep = myCurrentStep?.id === step.id;
+                              const isActiveLevel = currentLevel === step.step_order;
+                              return (
+                                <div
+                                  key={step.id}
+                                  className={cn(
+                                    'p-4 rounded-lg border-2 transition-colors',
+                                    step.status === 'approved' && 'border-emerald-300 bg-emerald-50',
+                                    step.status === 'rejected' && 'border-red-300 bg-red-50',
+                                    step.status === 'pending' && isMyStep && 'border-blue-300 bg-blue-50 ring-1 ring-blue-300',
+                                    step.status === 'pending' && isActiveLevel && !isMyStep && 'border-amber-200 bg-amber-50/50',
+                                    step.status === 'pending' && !isActiveLevel && 'border-muted bg-muted/30',
+                                  )}
+                                >
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="font-medium text-sm">{step.label}</span>
+                                    {step.status === 'approved' && <CheckCircle className="w-5 h-5 text-emerald-600" />}
+                                    {step.status === 'rejected' && <XCircle className="w-5 h-5 text-red-600" />}
+                                    {step.status === 'pending' && <Clock className="w-5 h-5 text-muted-foreground" />}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {step.status === 'approved' && `Aprobado por ${step.approverName || 'Usuario'}`}
+                                    {step.status === 'pending' && (isActiveLevel ? 'En espera de aprobación...' : 'Pendiente')}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
+                );
+              })()
             )}
           </div>
         </CardContent>
