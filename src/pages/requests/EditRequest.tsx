@@ -112,7 +112,7 @@ export default function EditRequest() {
       }
 
       const newStatus = submit
-        ? (hasWorkflow ? 'en_revision' : 'en_ejecucion')
+        ? (hasWorkflow ? 'en_revision' : 'aprobada')
         : request.status;
 
       await supabase
@@ -133,21 +133,21 @@ export default function EditRequest() {
           changed_by: user.id,
           comment: hasWorkflow
             ? (request.status === 'devuelta' ? 'Solicitud corregida y reenviada a revisión' : 'Solicitud enviada a revisión')
-            : 'Solicitud enviada directamente a ejecución (sin flujo de aprobación)',
+            : 'Solicitud aprobada automáticamente (sin flujo de aprobación)',
         });
 
-        const statusLabel = hasWorkflow ? 'En Revisión' : 'En Ejecución';
+        const statusLabel = hasWorkflow ? 'En Revisión' : 'Aprobada';
         sendNotification({
           requestId: request.id,
           eventType: 'status_change',
           title: `Solicitud #${String(request.request_number).padStart(6, '0')}: ${statusLabel}`,
-          message: `${profile?.name || 'Usuario'} envió "${title}" ${hasWorkflow ? 'a revisión' : 'directamente a ejecución'}.`,
+          message: `${profile?.name || 'Usuario'} envió "${title}" ${hasWorkflow ? 'a revisión' : 'directamente a ejecución (sin flujo de aprobación)'}.`,
           triggeredBy: user.id,
           newStatus: newStatus,
         });
       }
 
-      toast.success(submit ? (hasWorkflow ? 'Solicitud enviada a revisión' : 'Solicitud enviada a ejecución') : 'Cambios guardados');
+      toast.success(submit ? (hasWorkflow ? 'Solicitud enviada a revisión' : 'Solicitud lista para ejecución') : 'Cambios guardados');
       navigate(`/requests/${request.id}`);
     } catch (error) {
       console.error('Error saving request:', error);

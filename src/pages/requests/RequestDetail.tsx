@@ -145,25 +145,25 @@ export default function RequestDetail() {
         hasWorkflow = !!tplData?.default_workflow_id;
       }
 
-      const newStatus = hasWorkflow ? 'en_revision' : 'en_ejecucion';
+      const newStatus = hasWorkflow ? 'en_revision' : 'aprobada';
 
       await supabase.from('requests').update({ status: newStatus }).eq('id', request.id);
       await supabase.from('request_status_history').insert({
         request_id: request.id, from_status: request.status, to_status: newStatus,
         changed_by: user.id,
-        comment: hasWorkflow ? 'Solicitud enviada a revisión' : 'Solicitud enviada directamente a ejecución (sin flujo de aprobación)',
+        comment: hasWorkflow ? 'Solicitud enviada a revisión' : 'Solicitud aprobada automáticamente (sin flujo de aprobación)',
       });
 
-      const statusLabel = hasWorkflow ? 'En Revisión' : 'En Ejecución';
+      const statusLabel = hasWorkflow ? 'En Revisión' : 'Aprobada';
       sendNotification({
         requestId: request.id,
         eventType: 'status_change',
         title: `Solicitud #${formatRequestNumber(request.request_number)}: ${statusLabel}`,
-        message: `${profile?.name || 'Usuario'} envió "${request.title}" ${hasWorkflow ? 'a revisión' : 'directamente a ejecución'}.`,
+        message: `${profile?.name || 'Usuario'} envió "${request.title}" ${hasWorkflow ? 'a revisión' : 'directamente a ejecución (sin flujo de aprobación)'}.`,
         triggeredBy: user.id,
         newStatus: newStatus,
       });
-      toast.success(hasWorkflow ? 'Solicitud enviada a revisión' : 'Solicitud enviada a ejecución');
+      toast.success(hasWorkflow ? 'Solicitud enviada a revisión' : 'Solicitud lista para ejecución');
       fetchRequestData();
     } catch (error) {
       console.error('Error:', error);

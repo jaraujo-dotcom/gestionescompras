@@ -70,7 +70,7 @@ Cada plantilla puede tener un **grupo ejecutor** asignado (FK a `groups`). Esto 
 
 #### Plantillas sin Flujo de Aprobación
 
-Si una plantilla **no tiene** `default_workflow_id` asignado, las solicitudes creadas con ella **saltan el proceso de aprobación** y pasan directamente al estado `en_ejecucion` al ser enviadas por el solicitante.
+Si una plantilla **no tiene** `default_workflow_id` asignado, las solicitudes creadas con ella **saltan el proceso de aprobación** y pasan directamente al estado `aprobada` al ser enviadas por el solicitante. Esto permite que los ejecutores las vean en su pestaña "Aprobadas" de la bandeja de ejecución y puedan iniciar la ejecución manualmente.
 
 ### 2.3 Dominio: Solicitudes
 
