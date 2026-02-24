@@ -319,6 +319,22 @@ Los archivos se suben asociados a un campo de formulario y se referencian en el 
 |---------|-----------|
 | `send-notification` | Envía notificaciones por email (via webhook N8N) e in-app basándose en la configuración de `notification_configs` |
 
+### 8.1 Reglas de Entrega de Notificaciones (Filtrado Inteligente)
+
+La edge function `send-notification` filtra los destinatarios según el **contexto de la solicitud**, no solo por rol:
+
+| Rol | Recibe notificación si... |
+|-----|--------------------------|
+| **Gerencia** | Pertenece al `group_id` de la solicitud |
+| **Revisor** | Pertenece al `group_id` de la solicitud |
+| **Ejecutor** | Pertenece al `executor_group_id` de la plantilla asociada |
+| **Procesos** | Es aprobador en el flujo de trabajo (`request_workflow_steps`) de esa solicitud, O pertenece al `executor_group_id` |
+| **Integridad de Datos** | Es aprobador en el flujo de trabajo de esa solicitud, O pertenece al `executor_group_id` |
+| **Administrador** | Siempre (sin filtro de grupo) |
+| **Creador** | Según configuración `include_creator` del `notification_config` |
+
+Esto evita que usuarios reciban notificaciones de solicitudes que no les corresponden por grupo o contexto de aprobación.
+
 ---
 
 ## 9. Enums de la Base de Datos

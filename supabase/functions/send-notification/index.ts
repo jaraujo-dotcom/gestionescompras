@@ -118,10 +118,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2️⃣ Get request info
+    // 2️⃣ Get request info (including group_id and executor_group_id)
     const { data: requestData, error: requestError } = await supabase
       .from("requests")
-      .select("request_number, template_id, title, created_by, form_templates(name)")
+      .select("request_number, template_id, title, created_by, group_id, form_templates(name, executor_group_id)")
       .eq("id", requestId)
       .single();
 
@@ -187,17 +187,102 @@ Deno.serve(async (req) => {
       emailBodyContent = `<p>${htmlEscape(message)}</p>`;
     }
 
-    // 4️⃣ Get recipients based on config
+    // 4️⃣ Get recipients based on config — smart filtering by group & role
     const targetRoles: string[] = config?.target_roles || ["revisor", "ejecutor", "administrador"];
     const includeCreator: boolean = config?.include_creator ?? true;
 
-    // Get users by roles
-    const { data: roleUsers } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .in("role", targetRoles);
+    const requestGroupId: string | null = (requestData as any).group_id;
+    const executorGroupId: string | null = (requestData as any).form_templates?.executor_group_id || null;
 
-    const userIds = new Set<string>((roleUsers || []).map((r: any) => r.user_id));
+    // Get workflow step roles for this request (to know which roles are approvers)
+    const { data: workflowSteps } = await supabase
+      .from("request_workflow_steps")
+      .select("role_name")
+      .eq("request_id", requestId);
+    const workflowRoles = new Set((workflowSteps || []).map((s: any) => s.role_name));
+
+    const userIds = new Set<string>();
+
+    for (const role of targetRoles) {
+      if (role === "administrador") {
+        // Admin: always notified
+        const { data: admins } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "administrador");
+        (admins || []).forEach((r: any) => userIds.add(r.user_id));
+
+      } else if (role === "gerencia" || role === "revisor") {
+        // Gerencia/Revisor: only if they belong to the request's group
+        if (requestGroupId) {
+          const { data: groupMembers } = await supabase
+            .from("user_groups")
+            .select("user_id")
+            .eq("group_id", requestGroupId);
+          const groupUserIds = new Set((groupMembers || []).map((m: any) => m.user_id));
+
+          const { data: roleUsers } = await supabase
+            .from("user_roles")
+            .select("user_id")
+            .eq("role", role);
+          (roleUsers || []).forEach((r: any) => {
+            if (groupUserIds.has(r.user_id)) userIds.add(r.user_id);
+          });
+        }
+
+      } else if (role === "ejecutor") {
+        // Ejecutor: only if they belong to the template's executor_group
+        if (executorGroupId) {
+          const { data: execGroupMembers } = await supabase
+            .from("user_groups")
+            .select("user_id")
+            .eq("group_id", executorGroupId);
+          const execGroupUserIds = new Set((execGroupMembers || []).map((m: any) => m.user_id));
+
+          const { data: roleUsers } = await supabase
+            .from("user_roles")
+            .select("user_id")
+            .eq("role", "ejecutor");
+          (roleUsers || []).forEach((r: any) => {
+            if (execGroupUserIds.has(r.user_id)) userIds.add(r.user_id);
+          });
+        }
+
+      } else if (role === "procesos" || role === "integridad_datos") {
+        // Procesos/Integridad: if they are approvers in the workflow, OR belong to executor group
+        if (workflowRoles.has(role)) {
+          const { data: roleUsers } = await supabase
+            .from("user_roles")
+            .select("user_id")
+            .eq("role", role);
+          (roleUsers || []).forEach((r: any) => userIds.add(r.user_id));
+        }
+        // Also include if they belong to executor group
+        if (executorGroupId) {
+          const { data: execGroupMembers } = await supabase
+            .from("user_groups")
+            .select("user_id")
+            .eq("group_id", executorGroupId);
+          const execGroupUserIds = new Set((execGroupMembers || []).map((m: any) => m.user_id));
+
+          const { data: roleUsers } = await supabase
+            .from("user_roles")
+            .select("user_id")
+            .eq("role", role);
+          (roleUsers || []).forEach((r: any) => {
+            if (execGroupUserIds.has(r.user_id)) userIds.add(r.user_id);
+          });
+        }
+
+      } else {
+        // Any other role: include all users with that role (fallback)
+        const { data: roleUsers } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", role);
+        (roleUsers || []).forEach((r: any) => userIds.add(r.user_id));
+      }
+    }
 
     // Include creator if configured
     if (includeCreator && requestData.created_by) {
