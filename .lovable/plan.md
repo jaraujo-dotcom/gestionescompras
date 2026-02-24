@@ -1,66 +1,74 @@
 
-# Plan: Crear DATABASE.md - Guia del Backend de Gestion de Compras
 
-## Objetivo
-Crear un archivo `DATABASE.md` en la raiz del proyecto que documente de forma completa la estructura de la base de datos, roles, politicas de seguridad, flujos de estados y automatizaciones.
+# Plan: Notificaciones Inteligentes por Grupo y Rol
 
-## Estructura del Documento
+## Problema Actual
 
-El archivo contendra las siguientes secciones:
+Hoy, el sistema de notificaciones toma TODOS los usuarios que tengan los roles definidos en `target_roles` y les envía la notificación, sin importar si tienen relación con la solicitud específica. Esto genera ruido: un gerente recibe notificaciones de solicitudes de grupos que no le corresponden, un ejecutor recibe de plantillas que no gestiona, etc.
 
-### 1. Introduccion
-Breve descripcion del sistema "Gestion de Compras" y su proposito.
+## Nuevas Reglas de Notificación
 
-### 2. Tablas Principales y Relaciones
-Documentar las 16 tablas existentes organizadas por dominio:
+| Rol | Recibe notificación si... |
+|---|---|
+| **Gerencia** | Pertenece al `group_id` de la solicitud |
+| **Revisor** | Pertenece al `group_id` de la solicitud |
+| **Ejecutor** | Pertenece al `executor_group_id` de la plantilla asociada |
+| **Procesos** | Es aprobador en el flujo de trabajo de esa solicitud, O es ejecutor (pertenece al executor_group) |
+| **Integridad de Datos** | Es aprobador en el flujo de trabajo de esa solicitud, O es ejecutor (pertenece al executor_group) |
+| **Administrador** | Siempre |
+| **Creador** | Segun configuracion (`include_creator`) |
 
-- **Usuarios**: `profiles`, `user_roles`, `user_groups`, `groups`, `role_definitions`
-- **Formularios**: `form_templates`, `form_sections`, `form_fields`
-- **Solicitudes**: `requests`, `request_items`, `request_comments`, `request_status_history`
-- **Aprobaciones**: `request_approvals`, `request_workflow_steps`
-- **Flujos de trabajo**: `workflow_templates`, `workflow_steps`
-- **Notificaciones**: `notifications`, `notification_events`, `notification_configs`
+## Cambios Necesarios
 
-Incluir diagrama de relaciones en texto y tablas con columnas clave.
+### 1. Modificar la Edge Function `send-notification/index.ts`
 
-### 3. Sistema de Roles (RBAC)
-Explicar los 7 roles del enum `app_role`:
-- `solicitante` - Crea solicitudes
-- `revisor` - Revisa solicitudes enviadas
-- `ejecutor` - Ejecuta solicitudes aprobadas
-- `administrador` - Acceso total
-- `gerencia` - Aprobacion gerencial (por grupos)
-- `procesos` - Aprobacion de procesos
-- `integridad_datos` - Aprobacion de integridad de datos
+Reemplazar la seccion de "Get recipients based on config" (lineas 190-213) con logica inteligente:
 
-Mencionar la tabla `role_definitions` para configuracion dinamica de etiquetas.
+**a) Obtener datos adicionales de la solicitud:**
+- `group_id` de la solicitud (agregar al SELECT existente en linea 124)
+- `executor_group_id` de la plantilla (agregar al SELECT del join con `form_templates`)
 
-### 4. Politicas de Seguridad (RLS) y Visibilidad
-Documentar la funcion `can_view_request()` con una tabla que muestre que ve cada rol. Explicar la logica de visibilidad por grupos para `gerencia` y `solicitante`.
+**b) Para cada rol en `target_roles`, filtrar por contexto:**
 
-### 5. Flujo y Estados de Solicitudes
-Documentar el enum `request_status` con sus 9 estados y el ciclo de vida:
+```text
+Para "gerencia" y "revisor":
+  -> Obtener user_ids de user_groups WHERE group_id = request.group_id
+  -> Intersectar con usuarios que tengan ese rol
+
+Para "ejecutor":
+  -> Si la plantilla tiene executor_group_id:
+     Obtener user_ids de user_groups WHERE group_id = template.executor_group_id
+     Intersectar con usuarios que tengan rol ejecutor
+  -> Si no tiene executor_group_id: no notificar ejecutores
+
+Para "procesos" e "integridad_datos":
+  -> Verificar si el rol aparece en request_workflow_steps de esa solicitud
+  -> Si aparece: incluir usuarios con ese rol
+  -> Ademas, si pertenecen al executor_group_id: incluirlos tambien
+
+Para "administrador":
+  -> Incluir todos los usuarios con rol administrador (sin filtro)
 ```
-borrador -> en_revision -> aprobada -> en_ejecucion -> completada
-                        -> devuelta (regresa a borrador)
-                        -> rechazada
-                        -> anulada
-```
-Explicar el flujo de aprobacion multi-nivel con pasos paralelos via `request_workflow_steps`.
 
-### 6. Triggers y Funciones Automaticas
-Documentar:
-- `handle_new_user()` - Creacion automatica de perfil
-- `update_updated_at_column()` - Actualizacion de timestamps
-- `validate_approval_status()` - Validacion de aprobaciones
-- Funciones auxiliares: `has_role()`, `can_view_request()`, `user_in_group()`, `get_user_group_ids()`, `get_profiles_by_ids()`, `get_notifiable_users()`
+**c) Unificar los user_ids resultantes** en un Set, agregar creador si aplica, y continuar con el flujo existente.
 
-### 7. Storage
-Documentar el bucket `form-attachments` y sus politicas.
+### Detalle Tecnico de la Implementacion
 
-## Detalles Tecnicos
+Se reescribira la seccion de recipientes en la edge function con esta logica:
 
-- **Archivo a crear**: `DATABASE.md` en la raiz del proyecto
-- **Formato**: Markdown con tablas, bloques de codigo SQL, y diagramas ASCII
-- **Idioma**: Espanol (consistente con el proyecto)
-- **Sin cambios en codigo existente**: Solo se crea un archivo de documentacion
+1. Ampliar el query de request para incluir `group_id` y `form_templates(name, executor_group_id)`
+2. Consultar `request_workflow_steps` para saber que roles son aprobadores en esa solicitud
+3. Para cada rol en `target_roles`:
+   - **gerencia/revisor**: query `user_roles` JOIN `user_groups` filtrando por `request.group_id`
+   - **ejecutor**: query `user_roles` JOIN `user_groups` filtrando por `template.executor_group_id`
+   - **procesos/integridad_datos**: si el rol esta en los workflow steps, incluir todos con ese rol; ademas si pertenecen al executor group
+   - **administrador**: todos
+4. Mantener la logica de `include_creator` y el resto del flujo sin cambios
+
+### Archivos a Modificar
+
+- `supabase/functions/send-notification/index.ts` - Logica de seleccion de destinatarios
+- `DATABASE.md` - Documentar las nuevas reglas de notificacion
+
+No se requieren cambios de base de datos (migraciones), ya que toda la informacion necesaria (`group_id`, `executor_group_id`, `request_workflow_steps`) ya existe en las tablas.
+
