@@ -23,9 +23,10 @@ export default function ExecutionList() {
 
   const fetchRequests = async () => {
     try {
+      // RLS + can_view_request handles visibility including executor groups
       const { data, error } = await supabase
         .from('requests')
-        .select('*')
+        .select('*, form_templates(name, executor_group_id), groups(name)')
         .in('status', ['aprobada', 'en_ejecucion', 'en_espera'])
         .order('updated_at', { ascending: false });
 

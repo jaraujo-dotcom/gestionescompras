@@ -94,13 +94,26 @@ export default function EditRequest() {
     return true;
   };
 
-  const handleSave = async (submit: boolean = false) => {
+    const handleSave = async (submit: boolean = false) => {
     if (!validateRequest(submit) || !request || !user) return;
 
     setSaving(true);
 
     try {
-      const newStatus = submit ? 'en_revision' : request.status;
+      // Check if template has a workflow
+      let hasWorkflow = false;
+      if (request.template_id) {
+        const { data: tplData } = await supabase
+          .from('form_templates')
+          .select('default_workflow_id')
+          .eq('id', request.template_id)
+          .single();
+        hasWorkflow = !!tplData?.default_workflow_id;
+      }
+
+      const newStatus = submit
+        ? (hasWorkflow ? 'en_revision' : 'en_ejecucion')
+        : request.status;
 
       await supabase
         .from('requests')
@@ -112,29 +125,29 @@ export default function EditRequest() {
         .eq('id', request.id);
 
       // Add history if submitting
-      if (submit && request.status !== 'en_revision') {
+      if (submit && request.status !== newStatus) {
         await supabase.from('request_status_history').insert({
           request_id: request.id,
           from_status: request.status,
-          to_status: 'en_revision',
+          to_status: newStatus,
           changed_by: user.id,
-          comment: request.status === 'devuelta' 
-            ? 'Solicitud corregida y reenviada a revisión' 
-            : 'Solicitud enviada a revisión',
+          comment: hasWorkflow
+            ? (request.status === 'devuelta' ? 'Solicitud corregida y reenviada a revisión' : 'Solicitud enviada a revisión')
+            : 'Solicitud enviada directamente a ejecución (sin flujo de aprobación)',
         });
 
-
+        const statusLabel = hasWorkflow ? 'En Revisión' : 'En Ejecución';
         sendNotification({
           requestId: request.id,
           eventType: 'status_change',
-          title: `Solicitud #${String(request.request_number).padStart(6, '0')}: En Revisión`,
-          message: `${profile?.name || 'Usuario'} envió "${title}" a revisión.`,
+          title: `Solicitud #${String(request.request_number).padStart(6, '0')}: ${statusLabel}`,
+          message: `${profile?.name || 'Usuario'} envió "${title}" ${hasWorkflow ? 'a revisión' : 'directamente a ejecución'}.`,
           triggeredBy: user.id,
-          newStatus: 'en_revision',
+          newStatus: newStatus,
         });
       }
 
-      toast.success(submit ? 'Solicitud enviada a revisión' : 'Cambios guardados');
+      toast.success(submit ? (hasWorkflow ? 'Solicitud enviada a revisión' : 'Solicitud enviada a ejecución') : 'Cambios guardados');
       navigate(`/requests/${request.id}`);
     } catch (error) {
       console.error('Error saving request:', error);

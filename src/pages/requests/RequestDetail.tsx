@@ -134,20 +134,36 @@ export default function RequestDetail() {
   const handleSubmitForReview = async () => {
     if (!request || !user) return;
     try {
-      await supabase.from('requests').update({ status: 'en_revision' }).eq('id', request.id);
+      // Check if template has a workflow
+      let hasWorkflow = false;
+      if (request.template_id) {
+        const { data: tplData } = await supabase
+          .from('form_templates')
+          .select('default_workflow_id')
+          .eq('id', request.template_id)
+          .single();
+        hasWorkflow = !!tplData?.default_workflow_id;
+      }
+
+      const newStatus = hasWorkflow ? 'en_revision' : 'en_ejecucion';
+
+      await supabase.from('requests').update({ status: newStatus }).eq('id', request.id);
       await supabase.from('request_status_history').insert({
-        request_id: request.id, from_status: request.status, to_status: 'en_revision',
-        changed_by: user.id, comment: 'Solicitud enviada a revisión',
+        request_id: request.id, from_status: request.status, to_status: newStatus,
+        changed_by: user.id,
+        comment: hasWorkflow ? 'Solicitud enviada a revisión' : 'Solicitud enviada directamente a ejecución (sin flujo de aprobación)',
       });
+
+      const statusLabel = hasWorkflow ? 'En Revisión' : 'En Ejecución';
       sendNotification({
         requestId: request.id,
         eventType: 'status_change',
-        title: `Solicitud #${formatRequestNumber(request.request_number)}: En Revisión`,
-        message: `${profile?.name || 'Usuario'} envió "${request.title}" a revisión.`,
+        title: `Solicitud #${formatRequestNumber(request.request_number)}: ${statusLabel}`,
+        message: `${profile?.name || 'Usuario'} envió "${request.title}" ${hasWorkflow ? 'a revisión' : 'directamente a ejecución'}.`,
         triggeredBy: user.id,
-        newStatus: 'en_revision',
+        newStatus: newStatus,
       });
-      toast.success('Solicitud enviada a revisión');
+      toast.success(hasWorkflow ? 'Solicitud enviada a revisión' : 'Solicitud enviada a ejecución');
       fetchRequestData();
     } catch (error) {
       console.error('Error:', error);
@@ -304,7 +320,7 @@ export default function RequestDetail() {
               </Link>
               {request.status === 'devuelta' && (
                 <Button onClick={handleSubmitForReview}>
-                  <Send className="w-4 h-4 mr-2" /> Reenviar a Revisión
+                  <Send className="w-4 h-4 mr-2" /> Reenviar
                 </Button>
               )}
             </>
