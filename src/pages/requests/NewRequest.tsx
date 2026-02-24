@@ -159,7 +159,7 @@ export default function NewRequest() {
           requestId: requestData.id,
           eventType: 'status_change',
           title: `Solicitud #${String(requestData.request_number).padStart(6, '0')}: ${statusLabel}`,
-          message: `${profile?.name || 'Usuario'} envió "${title}" ${hasWorkflow ? 'a revisión' : 'directamente a ejecución (sin flujo de aprobación)'}.`,
+          message: hasWorkflow ? `${profile?.name || 'Usuario'} envió "${title}" a revisión.` : 'Aprobada automáticamente (sin flujo de aprobación).',
           triggeredBy: user.id,
           newStatus: notifStatus,
         });
