@@ -24,11 +24,6 @@ export function Sidebar() {
     icon: LayoutDashboard,
     show: true
   }, {
-    name: 'Notificaciones',
-    href: '/notifications',
-    icon: Bell,
-    show: true
-  }, {
     name: 'Mis Solicitudes',
     href: '/requests',
     icon: FileText,
