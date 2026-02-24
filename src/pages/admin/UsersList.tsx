@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Profile, AppRole, ROLE_LABELS } from '@/types/database';
-import { Loader2, Users, Save } from 'lucide-react';
+import { Loader2, Users, Save, Shield, Building } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -194,35 +194,58 @@ export default function UsersList() {
               {users.map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-start justify-between p-5 rounded-xl border bg-card hover:bg-accent/5 transition-all shadow-sm"
                 >
-                  <div>
-                    <p className="font-medium">{user.name}</p>
-                    <p className="text-sm text-muted-foreground">{user.email}</p>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {user.roles.length === 0 ? (
-                        <span className="text-xs text-muted-foreground">Sin roles</span>
-                      ) : (
-                        user.roles.map((role) => (
-                          <span key={role} className={cn('role-badge', `role-${role}`)}>
-                            {ROLE_LABELS[role]}
-                          </span>
-                        ))
-                      )}
+                  <div className="space-y-4 flex-1">
+                    <div>
+                      <p className="font-semibold text-lg">{user.name}</p>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
                     </div>
-                    {user.groups.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {user.groups.map((group) => (
-                          <Badge key={group.id} variant="outline" className="text-xs">
-                            {group.name}
-                          </Badge>
-                        ))}
+
+                    <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mt-2">
+                      <div className="space-y-2 flex-1 max-w-sm">
+                        <div className="flex items-center text-xs font-semibold text-muted-foreground uppercase tracking-wider gap-1.5 border-b pb-1">
+                          <Shield className="w-3.5 h-3.5" />
+                          <span>Roles</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {user.roles.length === 0 ? (
+                            <span className="text-xs text-muted-foreground italic">Sin roles asignados</span>
+                          ) : (
+                            user.roles.map((role) => (
+                              <span key={role} className={cn('role-badge', `role-${role}`, 'shadow-sm')}>
+                                {ROLE_LABELS[role]}
+                              </span>
+                            ))
+                          )}
+                        </div>
                       </div>
-                    )}
+
+                      <div className="space-y-2 flex-1 max-w-sm">
+                        <div className="flex items-center text-xs font-semibold text-muted-foreground uppercase tracking-wider gap-1.5 border-b pb-1">
+                          <Building className="w-3.5 h-3.5" />
+                          <span>Grupos</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {user.groups.length === 0 ? (
+                            <span className="text-xs text-muted-foreground italic">Sin grupos asignados</span>
+                          ) : (
+                            user.groups.map((group) => (
+                              <Badge key={group.id} variant="secondary" className="font-normal shadow-sm px-2.5 py-0.5">
+                                {group.name}
+                              </Badge>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => openEditDialog(user)}>
-                    Editar
-                  </Button>
+
+                  <div className="mt-4 sm:mt-0 sm:ml-6 flex-shrink-0">
+                    <Button variant="outline" size="sm" onClick={() => openEditDialog(user)}>
+                      Editar
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
