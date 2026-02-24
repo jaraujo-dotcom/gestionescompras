@@ -159,7 +159,7 @@ export default function RequestDetail() {
         requestId: request.id,
         eventType: 'status_change',
         title: `Solicitud #${formatRequestNumber(request.request_number)}: ${statusLabel}`,
-        message: `${profile?.name || 'Usuario'} envió "${request.title}" ${hasWorkflow ? 'a revisión' : 'directamente a ejecución (sin flujo de aprobación)'}.`,
+        message: hasWorkflow ? `${profile?.name || 'Usuario'} envió "${request.title}" a revisión.` : 'Aprobada automáticamente (sin flujo de aprobación).',
         triggeredBy: user.id,
         newStatus: newStatus,
       });

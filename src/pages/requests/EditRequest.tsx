@@ -141,7 +141,7 @@ export default function EditRequest() {
           requestId: request.id,
           eventType: 'status_change',
           title: `Solicitud #${String(request.request_number).padStart(6, '0')}: ${statusLabel}`,
-          message: `${profile?.name || 'Usuario'} envió "${title}" ${hasWorkflow ? 'a revisión' : 'directamente a ejecución (sin flujo de aprobación)'}.`,
+          message: hasWorkflow ? `${profile?.name || 'Usuario'} envió "${title}" a revisión.` : 'Aprobada automáticamente (sin flujo de aprobación).',
           triggeredBy: user.id,
           newStatus: newStatus,
         });
