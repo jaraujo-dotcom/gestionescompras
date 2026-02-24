@@ -130,6 +130,7 @@ export type Database = {
           created_by: string | null
           default_workflow_id: string | null
           description: string | null
+          executor_group_id: string | null
           id: string
           is_active: boolean
           name: string
@@ -140,6 +141,7 @@ export type Database = {
           created_by?: string | null
           default_workflow_id?: string | null
           description?: string | null
+          executor_group_id?: string | null
           id?: string
           is_active?: boolean
           name: string
@@ -150,6 +152,7 @@ export type Database = {
           created_by?: string | null
           default_workflow_id?: string | null
           description?: string | null
+          executor_group_id?: string | null
           id?: string
           is_active?: boolean
           name?: string
@@ -161,6 +164,13 @@ export type Database = {
             columns: ["default_workflow_id"]
             isOneToOne: false
             referencedRelation: "workflow_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_templates_executor_group_id_fkey"
+            columns: ["executor_group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
             referencedColumns: ["id"]
           },
         ]

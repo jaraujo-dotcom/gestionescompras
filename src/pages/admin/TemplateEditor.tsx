@@ -41,6 +41,8 @@ export default function TemplateEditor() {
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [workflows, setWorkflows] = useState<WorkflowTemplate[]>([]);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>('none');
+  const [allGroups, setAllGroups] = useState<{ id: string; name: string }[]>([]);
+  const [selectedExecutorGroupId, setSelectedExecutorGroupId] = useState<string>('none');
 
   const isNew = !id || id === 'new';
 
@@ -51,6 +53,7 @@ export default function TemplateEditor() {
 
   useEffect(() => {
     fetchWorkflows();
+    fetchAllGroups();
     if (isNew) {
       setLoading(false);
       return;
@@ -68,6 +71,11 @@ export default function TemplateEditor() {
     setWorkflows(data || []);
   };
 
+  const fetchAllGroups = async () => {
+    const { data } = await supabase.from('groups').select('id, name').order('name');
+    setAllGroups(data || []);
+  };
+
   const fetchTemplate = async () => {
     try {
       const [templateRes, fieldsRes, sectionsRes] = await Promise.all([
@@ -83,6 +91,7 @@ export default function TemplateEditor() {
       setDescription(template.description || '');
       setIsActive(template.is_active);
       setSelectedWorkflowId(template.default_workflow_id || 'none');
+      setSelectedExecutorGroupId(template.executor_group_id || 'none');
 
       const mappedSections: SectionDraft[] = (sectionsRes.data || []).map((s) => ({
         id: s.id,
@@ -223,6 +232,7 @@ export default function TemplateEditor() {
       let templateId: string;
 
       const workflowId = selectedWorkflowId === 'none' ? null : selectedWorkflowId;
+      const executorGroupId = selectedExecutorGroupId === 'none' ? null : selectedExecutorGroupId;
 
       if (isNew) {
         const { data, error } = await supabase
@@ -233,6 +243,7 @@ export default function TemplateEditor() {
             is_active: isActive,
             created_by: user?.id,
             default_workflow_id: workflowId,
+            executor_group_id: executorGroupId,
           })
           .select()
           .single();
@@ -247,6 +258,7 @@ export default function TemplateEditor() {
             description: description || null,
             is_active: isActive,
             default_workflow_id: workflowId,
+            executor_group_id: executorGroupId,
           })
           .eq('id', id);
 
@@ -426,21 +438,43 @@ export default function TemplateEditor() {
               rows={2}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="workflow">Flujo de Aprobación por defecto</Label>
-            <Select value={selectedWorkflowId} onValueChange={setSelectedWorkflowId}>
-              <SelectTrigger id="workflow">
-                <SelectValue placeholder="Sin flujo asignado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin flujo asignado</SelectItem>
-                {workflows.map((wf) => (
-                  <SelectItem key={wf.id} value={wf.id}>
-                    {wf.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="workflow">Flujo de Aprobación por defecto</Label>
+              <Select value={selectedWorkflowId} onValueChange={setSelectedWorkflowId}>
+                <SelectTrigger id="workflow">
+                  <SelectValue placeholder="Sin flujo asignado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin flujo (pasa directo a ejecución)</SelectItem>
+                  {workflows.map((wf) => (
+                    <SelectItem key={wf.id} value={wf.id}>
+                      {wf.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedWorkflowId === 'none' && (
+                <p className="text-xs text-muted-foreground">Sin flujo asignado, las solicitudes pasarán directamente a ejecución al ser enviadas.</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="executorGroup">Grupo Ejecutor</Label>
+              <Select value={selectedExecutorGroupId} onValueChange={setSelectedExecutorGroupId}>
+                <SelectTrigger id="executorGroup">
+                  <SelectValue placeholder="Sin grupo ejecutor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin grupo ejecutor</SelectItem>
+                  {allGroups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Los ejecutores de este grupo podrán ver y gestionar las solicitudes de este tipo.</p>
+            </div>
           </div>
         </CardContent>
       </Card>

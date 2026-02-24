@@ -81,7 +81,11 @@ export default function NewRequest() {
     setSaving(true);
 
     try {
-      const status = submit ? 'en_revision' : 'borrador';
+      // If no workflow assigned, skip approval and go directly to execution
+      const hasWorkflow = !!selectedTemplate.default_workflow_id;
+      const status = submit
+        ? (hasWorkflow ? 'en_revision' : 'en_ejecucion')
+        : 'borrador';
 
       const insertData: any = {
         title,
@@ -118,11 +122,13 @@ export default function NewRequest() {
         from_status: null,
         to_status: status,
         changed_by: user.id,
-        comment: submit ? 'Solicitud enviada a revisión' : 'Solicitud creada como borrador',
+        comment: submit
+          ? (hasWorkflow ? 'Solicitud enviada a revisión' : 'Solicitud enviada directamente a ejecución (sin flujo de aprobación)')
+          : 'Solicitud creada como borrador',
       });
 
-      // Workflow Instantiation
-      if (selectedTemplate.default_workflow_id) {
+      // Workflow Instantiation (only if template has a workflow)
+      if (hasWorkflow && selectedTemplate.default_workflow_id) {
         const { data: workflowSteps } = await supabase
           .from('workflow_steps')
           .select('*')
@@ -147,17 +153,19 @@ export default function NewRequest() {
       }
 
       if (submit) {
+        const notifStatus = hasWorkflow ? 'en_revision' : 'en_ejecucion';
+        const statusLabel = hasWorkflow ? 'En Revisión' : 'En Ejecución';
         sendNotification({
           requestId: requestData.id,
           eventType: 'status_change',
-          title: `Solicitud #${String(requestData.request_number).padStart(6, '0')}: En Revisión`,
-          message: `${profile?.name || 'Usuario'} envió "${title}" a revisión.`,
+          title: `Solicitud #${String(requestData.request_number).padStart(6, '0')}: ${statusLabel}`,
+          message: `${profile?.name || 'Usuario'} envió "${title}" ${hasWorkflow ? 'a revisión' : 'directamente a ejecución'}.`,
           triggeredBy: user.id,
-          newStatus: 'en_revision',
+          newStatus: notifStatus,
         });
       }
 
-      toast.success(submit ? 'Solicitud enviada a revisión' : 'Borrador guardado');
+      toast.success(submit ? (hasWorkflow ? 'Solicitud enviada a revisión' : 'Solicitud enviada a ejecución') : 'Borrador guardado');
       navigate('/requests');
     } catch (error: any) {
       console.error('Error saving request:', error);
@@ -367,7 +375,7 @@ export default function NewRequest() {
         </Button>
         <Button onClick={() => handleSave(true)} disabled={saving || !selectedTemplate}>
           {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-          Enviar a Revisión
+          {selectedTemplate?.default_workflow_id ? 'Enviar a Revisión' : 'Enviar a Ejecución'}
         </Button>
       </div>
     </div>

@@ -153,6 +153,7 @@ export interface FormTemplate {
   description: string | null;
   is_active: boolean;
   default_workflow_id: string | null;
+  executor_group_id: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
