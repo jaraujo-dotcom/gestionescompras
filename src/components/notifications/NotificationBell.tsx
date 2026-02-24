@@ -180,13 +180,13 @@ export function NotificationBell() {
                   <div className="flex-1 min-w-0">
                     <p
                       className={cn(
-                        'text-sm truncate',
+                        'text-sm',
                         !n.is_read && 'font-medium'
                       )}
                     >
                       {n.title}
                     </p>
-                    <p className="text-xs text-muted-foreground line-clamp-2">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {n.message.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '')}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
