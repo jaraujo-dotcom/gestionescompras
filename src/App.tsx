@@ -16,9 +16,7 @@ import NewRequest from "./pages/requests/NewRequest";
 import RequestDetail from "./pages/requests/RequestDetail";
 import EditRequest from "./pages/requests/EditRequest";
 import ReviewList from "./pages/review/ReviewList";
-import ReviewDetail from "./pages/review/ReviewDetail";
 import ExecutionList from "./pages/execution/ExecutionList";
-import ExecutionDetail from "./pages/execution/ExecutionDetail";
 import UsersList from "./pages/admin/UsersList";
 import TemplatesList from "./pages/admin/TemplatesList";
 import TemplateEditor from "./pages/admin/TemplateEditor";
@@ -64,11 +62,11 @@ const App = () => (
 
               {/* Review */}
               <Route path="/review" element={<ReviewList />} />
-              <Route path="/review/:id" element={<ReviewDetail />} />
+              <Route path="/review/:id" element={<RequestDetail />} />
 
               {/* Execution */}
               <Route path="/execution" element={<ExecutionList />} />
-              <Route path="/execution/:id" element={<ExecutionDetail />} />
+              <Route path="/execution/:id" element={<RequestDetail />} />
 
               {/* Admin */}
               <Route path="/admin/users" element={<UsersList />} />
