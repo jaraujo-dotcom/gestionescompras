@@ -297,9 +297,27 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-      const emailSubject = `Solicitud #${requestNumber} – ${requestData.title || templateName}`;
+      const fallbackSubject = `Solicitud #${requestNumber}: ${requestData.title || templateName}`;
+      const emailSubject = (title && String(title).trim().length > 0)
+        ? String(title).trim()
+        : fallbackSubject;
 
-      await fetch(n8nWebhookUrl, {
+      const emailTextBody = [
+        `${emailSubject}`,
+        "",
+        `Tipo de solicitud: ${templateName}`,
+        `Título: ${requestData.title || "Sin título"}`,
+        `Número de solicitud: #${requestNumber}`,
+        `Evento: ${eventLabels[eventType] || eventType || "Notificación"}`,
+        `Estado actual: ${statusLabels[currentStatus] || currentStatus}`,
+        `Acción realizada por: ${userName || "Sistema"}`,
+        "",
+        `Detalle: ${message}`,
+        "",
+        `Ver solicitud: ${requestLink}`,
+      ].join("\n");
+
+      const n8nResponse = await fetch(n8nWebhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -313,13 +331,31 @@ Deno.serve(async (req) => {
           status: currentStatus,
           statusLabel: statusLabels[currentStatus] || currentStatus,
           triggeredByName: userName || "Sistema",
+
+          // Subject aliases (retrocompatibilidad con n8n)
           subject: emailSubject,
-          title,
-          message,
+          asunto: emailSubject,
+          emailSubject,
+          title: emailSubject,
+
+          // Body aliases (texto + html)
+          summaryMessage: message,
+          message: emailTextBody,
+          textBody: emailTextBody,
+          text: emailTextBody,
+          body: emailTextBody,
           htmlBody,
+          html: htmlBody,
+          bodyHtml: htmlBody,
+
           recipients: recipients.map((u: any) => ({ email: u.email, name: u.name })),
         }),
       });
+
+      if (!n8nResponse.ok) {
+        const errorText = await n8nResponse.text();
+        console.error("n8n webhook error:", n8nResponse.status, errorText);
+      }
     }
 
     return new Response(JSON.stringify({ success: true }), {
