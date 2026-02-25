@@ -32,6 +32,7 @@ import RolesList from "./pages/admin/RolesList";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ChangePassword from "./pages/ChangePassword";
+import GuestForm from "./pages/external/GuestForm";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/external/:token" element={<GuestForm />} />
 
             {/* Protected routes */}
             <Route element={<AppLayout />}>

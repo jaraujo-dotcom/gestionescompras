@@ -1,6 +1,7 @@
 // Status types
 export type RequestStatus =
   | 'borrador'
+  | 'esperando_tercero'
   | 'en_revision'
   | 'devuelta'
   | 'aprobada'
@@ -12,6 +13,7 @@ export type RequestStatus =
 
 export const STATUS_LABELS: Record<RequestStatus, string> = {
   borrador: 'Borrador',
+  esperando_tercero: 'Esperando Tercero',
   en_revision: 'Pendiente de Aprobación',
   devuelta: 'Devuelta',
   aprobada: 'Aprobada',

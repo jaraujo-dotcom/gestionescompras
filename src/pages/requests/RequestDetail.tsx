@@ -19,7 +19,7 @@ import {
   TableColumnSchema,
   STATUS_LABELS,
 } from '@/types/database';
-import { ArrowLeft, Edit, Send, Loader2, Clock, User, MessageSquare, Trash2, Ban, FileSpreadsheet, Users2, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Edit, Send, Loader2, Clock, User, MessageSquare, Trash2, Ban, FileSpreadsheet, Users2, ShieldCheck, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdminStatusChanger } from '@/components/requests/AdminStatusChanger';
 import { exportToExcel } from '@/lib/exportRequest';
@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-
+import { ExternalInviteDialog } from '@/components/requests/ExternalInviteDialog';
 function formatRequestNumber(num: number): string {
   return String(num).padStart(6, '0');
 }
@@ -52,7 +52,8 @@ export default function RequestDetail() {
   const [fields, setFields] = useState<FormField[]>([]);
   const [sections, setSections] = useState<FormSection[]>([]);
   const [history, setHistory] = useState<(RequestStatusHistory & { profile?: Profile })[]>([]);
-
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [hasExternalFields, setHasExternalFields] = useState(false);
   useEffect(() => {
     if (id) fetchRequestData();
   }, [id]);
@@ -95,14 +96,16 @@ export default function RequestDetail() {
         if (templateRes.data) setTemplate(templateRes.data as FormTemplate);
 
         if (fieldsRes.data) {
-          setFields(fieldsRes.data.map((f) => ({
+          const parsedFields = fieldsRes.data.map((f) => ({
             ...f,
             field_type: f.field_type as FormField['field_type'],
             options_json: f.options_json as string[] | null,
             table_schema_json: f.table_schema_json as unknown as TableColumnSchema[] | null,
             dependency_json: f.dependency_json as unknown as FieldDependency | null,
             section_id: f.section_id || null,
-          })));
+          }));
+          setFields(parsedFields);
+          setHasExternalFields(fieldsRes.data.some((f: any) => f.is_external === true));
         }
         setSections((sectionsRes.data || []) as FormSection[]);
       }
@@ -268,6 +271,10 @@ export default function RequestDetail() {
   const canEdit = request.created_by === user?.id &&
     (request.status === 'borrador' || request.status === 'devuelta');
 
+  const canInviteExternal = hasExternalFields && 
+    (request.status === 'borrador' || request.status === 'esperando_tercero') &&
+    request.created_by === user?.id;
+
   const canDelete = request.status === 'borrador' && (
     request.created_by === user?.id || hasRole('gerencia') || hasRole('administrador')
   );
@@ -311,6 +318,11 @@ export default function RequestDetail() {
           <Button variant="outline" size="sm" onClick={() => handleExport()}>
             <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel
           </Button>
+          {canInviteExternal && (
+            <Button variant="outline" size="sm" onClick={() => setShowInviteDialog(true)}>
+              <ExternalLink className="w-4 h-4 mr-1" /> Invitar Externo
+            </Button>
+          )}
           {canEdit && (
             <>
               <Link to={`/requests/${request.id}/edit`}>
@@ -375,6 +387,16 @@ export default function RequestDetail() {
 
       {hasRole('administrador') && request && user && (
         <AdminStatusChanger requestId={request.id} currentStatus={request.status as RequestStatus} userId={user.id} onStatusChanged={fetchRequestData} />
+      )}
+
+      {request && (
+        <ExternalInviteDialog
+          open={showInviteDialog}
+          onOpenChange={setShowInviteDialog}
+          requestId={request.id}
+          requestNumber={request.request_number}
+          onInviteCreated={fetchRequestData}
+        />
       )}
 
       <RequestComments requestId={request.id} requestNumber={request.request_number} />
