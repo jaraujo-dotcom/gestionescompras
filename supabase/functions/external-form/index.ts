@@ -93,16 +93,20 @@ Deno.serve(async (req) => {
         if (typeof schema === 'string') schema = JSON.parse(schema)
         return {
           ...f,
-          // Filter columns to only external ones
-          table_schema_json: (schema as any[]).filter((col: any) => col.is_external)
+          // Only keep external columns, strip their rules (may reference internal fields)
+          table_schema_json: (schema as any[])
+            .filter((col: any) => col.is_external)
+            .map((col: any) => ({ ...col, rules: undefined }))
         }
       })
 
-      const fields = [...(allExtFields || []), ...filteredTableFields]
+      // Combine and strip dependency_json so external fields always show
+      // (dependencies reference internal fields the guest doesn't have)
+      const fields = [...(allExtFields || []), ...filteredTableFields].map(f => ({
+        ...f,
+        dependency_json: null, // always show external fields
+      }))
       console.log('External fields count:', (allExtFields || []).length, 'Table fields with ext cols:', filteredTableFields.length, 'Total:', fields.length)
-      if (filteredTableFields.length > 0) {
-        console.log('Table field columns:', JSON.stringify(filteredTableFields.map(f => ({ key: f.field_key, cols: f.table_schema_json }))))
-      }
 
       // Get sections for external fields
       const sectionIds = [...new Set((fields || []).filter(f => f.section_id).map(f => f.section_id))]
@@ -117,6 +121,7 @@ Deno.serve(async (req) => {
       }
 
       // Filter data_json to only include external field keys
+      // For table fields, send existing row data so guest sees context
       const externalKeys = (fields || []).map(f => f.field_key)
       const filteredData: Record<string, any> = {}
       const dataJson = request.data_json as Record<string, any>
