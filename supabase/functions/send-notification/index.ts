@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     // Get request info
     const { data: requestData, error: requestError } = await supabase
       .from("requests")
-      .select("request_number, template_id, title, created_by, group_id, form_templates(name, executor_group_id)")
+      .select("request_number, status, template_id, title, created_by, group_id, form_templates(name, executor_group_id)")
       .eq("id", requestId)
       .single();
 
@@ -84,6 +84,7 @@ Deno.serve(async (req) => {
 
     const requestNumber = String(requestData.request_number).padStart(6, "0");
     const templateName = (requestData as any).form_templates?.name || "General";
+    const requestStatus = (requestData as any).status || "";
     const appUrl = baseUrl || Deno.env.get("APP_URL") || "https://gestiones-compras.vercel.app";
     const requestLink = `${appUrl}/requests/${requestId}`;
 
@@ -122,8 +123,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Ejecutor: only if in executor group
-    if (executorGroupId) {
+    // Ejecutor: only if in executor group AND request is aprobada or later
+    const executorStatuses = new Set(["aprobada", "en_ejecucion", "en_espera", "completada", "anulada"]);
+    if (executorGroupId && executorStatuses.has(newStatus || requestStatus)) {
       const { data: execMembers } = await supabase.from("user_groups").select("user_id").eq("group_id", executorGroupId);
       const execUserIds = new Set((execMembers || []).map((m: any) => m.user_id));
 
