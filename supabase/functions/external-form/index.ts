@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
         ...f,
         dependency_json: null, // always show external fields
       }))
-      console.log('External fields count:', (allExtFields || []).length, 'Table fields with ext cols:', filteredTableFields.length, 'Total:', fields.length)
+      console.log('External fields:', fields.map(f => ({ key: f.field_key, _readonly: (f as any)._readonly, mode: (f as any).external_mode })))
 
       // Get sections for external fields
       const sectionIds = [...new Set((fields || []).filter(f => f.section_id).map(f => f.section_id))]
@@ -219,20 +219,21 @@ Deno.serve(async (req) => {
       // Get external field keys to validate
       const { data: externalFields } = await supabase
         .from('form_fields')
-        .select('field_key, field_type, table_schema_json, is_external')
+        .select('field_key, field_type, table_schema_json, is_external, external_mode')
         .eq('template_id', request.template_id)
 
-      // Build allowed keys: fully external fields + table fields with external columns
+      // Build allowed keys: only editable external fields (not readonly)
       const allowedKeys = new Set<string>()
       for (const f of (externalFields || [])) {
-        if (f.is_external) {
+        const mode = (f as any).external_mode || (f.is_external ? 'editable' : 'none')
+        if (mode === 'editable') {
           allowedKeys.add(f.field_key)
         } else if (f.field_type === 'table') {
           let schema = f.table_schema_json
           if (typeof schema === 'string') schema = JSON.parse(schema)
           if (Array.isArray(schema) && schema.some((col: any) => {
-            const mode = col.external_mode || (col.is_external ? 'editable' : 'none')
-            return mode !== 'none'
+            const colMode = col.external_mode || (col.is_external ? 'editable' : 'none')
+            return colMode === 'editable'
           })) {
             allowedKeys.add(f.field_key)
           }
