@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, ClipboardCheck, Settings, Users, LayoutDashboard, PlayCircle, LogOut, ChevronLeft, ChevronRight, Bell, BellRing, ChevronDown, ShieldCheck, Users2, KeyRound, GitFork, UserCog } from 'lucide-react';
+import { FileText, ClipboardCheck, Settings, Users, LayoutDashboard, PlayCircle, LogOut, ChevronLeft, ChevronRight, ChevronDown, ShieldCheck, Users2, KeyRound, GitFork, UserCog } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -52,10 +52,6 @@ export function Sidebar() {
     name: 'Formularios',
     href: '/admin/templates',
     icon: Settings
-  }, {
-    name: 'Config. Notificaciones',
-    href: '/admin/notifications',
-    icon: BellRing
   }, {
     name: 'Flujos de Aprobación',
     href: '/admin/workflows',
