@@ -80,8 +80,8 @@ export default function EditRequest() {
       return false;
     }
 
-    // Always validate form fields (both save and submit)
-    if (fields.length > 0) {
+    // Only validate form fields when submitting, not when saving draft
+    if (submit && fields.length > 0) {
       const { valid, errors } = validateDynamicForm(fields, formValues);
       setFormErrors(errors);
       if (!valid) {
@@ -89,6 +89,8 @@ export default function EditRequest() {
         toast.error(firstError);
         return false;
       }
+    } else {
+      setFormErrors({});
     }
 
     return true;

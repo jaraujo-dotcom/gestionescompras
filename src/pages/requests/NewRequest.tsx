@@ -60,8 +60,8 @@ export default function NewRequest() {
       return false;
     }
 
-    // Always validate form fields (both save and submit)
-    if (fields.length > 0) {
+    // Only validate form fields when submitting, not when saving draft
+    if (submit && fields.length > 0) {
       const { valid, errors } = validateDynamicForm(fields, formValues);
       setFormErrors(errors);
       if (!valid) {
@@ -69,6 +69,8 @@ export default function NewRequest() {
         toast.error(firstError);
         return false;
       }
+    } else {
+      setFormErrors({});
     }
 
     return true;
