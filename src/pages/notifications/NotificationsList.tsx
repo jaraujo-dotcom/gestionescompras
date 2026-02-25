@@ -27,6 +27,39 @@ export default function NotificationsList() {
 
   useEffect(() => {
     fetchNotifications();
+
+    if (!user) return;
+
+    // Subscribe to realtime changes for this user
+    const channel = supabase
+      .channel('notifications-list')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setNotifications((prev) => [payload.new as Notification, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedNotif = payload.new as Notification;
+            setNotifications((prev) =>
+              prev.map((n) => (n.id === updatedNotif.id ? updatedNotif : n))
+            );
+          } else if (payload.eventType === 'DELETE') {
+            const deletedNotif = payload.old as Notification;
+            setNotifications((prev) => prev.filter((n) => n.id !== deletedNotif.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const fetchNotifications = async () => {

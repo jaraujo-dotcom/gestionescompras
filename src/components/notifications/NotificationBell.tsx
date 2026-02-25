@@ -35,21 +35,33 @@ export function NotificationBell() {
     fetchNotifications();
     fetchUnreadCount();
 
-    // Subscribe to realtime inserts for this user
+    // Subscribe to realtime changes for this user
     const channel = supabase
       .channel('notifications-bell')
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          const newNotif = payload.new as Notification;
-          setNotifications((prev) => [newNotif, ...prev.slice(0, 9)]);
-          setUnreadCount((prev) => prev + 1);
+          if (payload.eventType === 'INSERT') {
+            const newNotif = payload.new as Notification;
+            setNotifications((prev) => [newNotif, ...prev.slice(0, 9)]);
+            setUnreadCount((prev) => prev + 1);
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedNotif = payload.new as Notification;
+            setNotifications((prev) =>
+              prev.map((n) => (n.id === updatedNotif.id ? updatedNotif : n))
+            );
+            fetchUnreadCount();
+          } else if (payload.eventType === 'DELETE') {
+            const deletedNotif = payload.old as Notification;
+            setNotifications((prev) => prev.filter((n) => n.id !== deletedNotif.id));
+            fetchUnreadCount();
+          }
         }
       )
       .subscribe();
