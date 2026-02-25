@@ -297,20 +297,23 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-      const emailSubject = `${templateName} - ${requestData.title || "Sin título"} - #${requestNumber}`;
+      const emailSubject = `${templateName} - ${requestData.title || "Sin título"} - ${requestNumber}`;
 
-      const emailTextBody = [
-        `<b>Tipo de solicitud:</b> ${htmlEscape(templateName)}`,
-        `<b>Título:</b> ${safeRequestTitle || "Sin título"}`,
-        `<b>Nº Solicitud:</b> #${safeRequestNumber}`,
-        `<b>Evento:</b> ${htmlEscape(eventLabels[eventType] || eventType || "Notificación")}`,
-        `<b>Estado actual:</b> ${safeStatusLabel}`,
-        `<b>Acción realizada por:</b> ${safeUserName}`,
+      const plainLines = [
+        `Tipo de solicitud: ${templateName}`,
+        `Título: ${requestData.title || "Sin título"}`,
+        `Nro de solicitud: ${requestNumber}`,
+        `Evento: ${eventLabels[eventType] || eventType || "Notificación"}`,
+        `Estado actual: ${statusLabels[currentStatus] || currentStatus}`,
+        `Acción realizada por: ${userName || "Sistema"}`,
         ``,
-        `<b>Detalle:</b> ${safeMessage}`,
+        `Detalle: ${message}`,
         ``,
-        `<a href="${safeRequestLink}">Ver solicitud</a>`,
-      ].join("<br>");
+        `Ver solicitud: ${requestLink}`,
+      ];
+
+      const emailTextBody = plainLines.join("\n");
+      const emailHtmlSnippet = plainLines.map((line) => htmlEscape(line)).join("<br>");
 
       const n8nResponse = await fetch(n8nWebhookUrl, {
         method: "POST",
@@ -327,11 +330,14 @@ Deno.serve(async (req) => {
           statusLabel: statusLabels[currentStatus] || currentStatus,
           triggeredByName: userName || "Sistema",
 
-          // Subject aliases (retrocompatibilidad con n8n)
+          // Subject aliases (máxima retrocompatibilidad)
           subject: emailSubject,
           asunto: emailSubject,
           emailSubject,
           title: emailSubject,
+          subjectLine: emailSubject,
+          email_subject: emailSubject,
+          mailSubject: emailSubject,
 
           // Body aliases (texto + html)
           summaryMessage: message,
@@ -339,6 +345,9 @@ Deno.serve(async (req) => {
           textBody: emailTextBody,
           text: emailTextBody,
           body: emailTextBody,
+          plainText: emailTextBody,
+          messageHtml: emailHtmlSnippet,
+          htmlSnippet: emailHtmlSnippet,
           htmlBody,
           html: htmlBody,
           bodyHtml: htmlBody,
