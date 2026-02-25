@@ -8,7 +8,7 @@
 
 ## 2. Tablas Principales y Relaciones
 
-El esquema consta de **18 tablas** organizadas en 6 dominios:
+El esquema consta de **19 tablas** organizadas en 7 dominios:
 
 ### Diagrama de Relaciones
 
@@ -36,7 +36,8 @@ requests ──────┬──> request_items
   │            ├──> request_status_history
   │            ├──> request_approvals
   │            ├──> request_workflow_steps
-  │            └──> notifications
+  │            ├──> notifications
+  │            └──> external_invitations
   │
   ├──> form_templates (template_id)
   └──> groups (group_id)
@@ -60,7 +61,7 @@ notification_events ──> notification_configs
 |-------|-------------|----------------|
 | `form_templates` | Plantillas de formulario | `id`, `name`, `is_active`, `default_workflow_id`, `executor_group_id` |
 | `form_sections` | Secciones dentro de una plantilla | `template_id`, `name`, `section_order`, `is_collapsible` |
-| `form_fields` | Campos de un formulario | `template_id`, `section_id`, `field_key`, `field_type` (enum), `is_required`, `options_json`, `table_schema_json`, `dependency_json`, `validation_json` |
+| `form_fields` | Campos de un formulario | `template_id`, `section_id`, `field_key`, `field_type` (enum), `is_required`, `options_json`, `table_schema_json`, `dependency_json`, `validation_json`, `is_external`, `external_mode` |
 
 **Tipos de campo** (`field_type` enum): `text`, `number`, `date`, `select`, `boolean`, `table`, `file`
 
@@ -78,28 +79,36 @@ Si una plantilla **no tiene** `default_workflow_id` asignado, las solicitudes cr
 |-------|-------------|----------------|
 | `requests` | Solicitudes de compra | `id`, `request_number` (secuencial), `template_id`, `title`, `created_by`, `status` (enum), `group_id`, `data_json` |
 | `request_items` | Artículos de una solicitud | `request_id`, `nombre_articulo`, `categoria`, `unidad_medida`, `cantidad`, `precio_estimado` |
-| `request_comments` | Comentarios/observaciones | `request_id`, `user_id`, `comment` |
+| `request_comments` | Comentarios de seguimiento | `request_id`, `user_id`, `comment` |
 | `request_status_history` | Historial de cambios de estado | `request_id`, `from_status`, `to_status`, `changed_by`, `comment` |
 
-### 2.4 Dominio: Aprobaciones
+### 2.4 Dominio: Invitaciones Externas
+
+| Tabla | Descripción | Columnas Clave |
+|-------|-------------|----------------|
+| `external_invitations` | Invitaciones a terceros para completar campos externos | `request_id`, `guest_email`, `guest_name`, `token`, `status` (`pending`/`completed`/`expired`), `expires_at`, `completed_at`, `created_by` |
+
+Los campos de formulario con `is_external = true` o `external_mode = 'editable'` pueden ser completados por terceros invitados a través de un enlace público con token. Los campos con `external_mode = 'readonly'` son visibles pero no editables por el tercero.
+
+### 2.5 Dominio: Aprobaciones
 
 | Tabla | Descripción | Columnas Clave |
 |-------|-------------|----------------|
 | `request_approvals` | Decisiones de aprobación por rol | `request_id`, `role`, `approved_by`, `status` (`pendiente`/`aprobada`/`rechazada`/`devuelta`), `comment` |
 | `request_workflow_steps` | Pasos del workflow instanciados por solicitud | `request_id`, `step_order`, `role_name`, `label`, `status` (`pending`/`approved`/`rejected`/`skipped`), `approved_by` |
 
-### 2.5 Dominio: Flujos de Trabajo
+### 2.6 Dominio: Flujos de Trabajo
 
 | Tabla | Descripción | Columnas Clave |
 |-------|-------------|----------------|
 | `workflow_templates` | Plantillas de flujo reutilizables | `id`, `name`, `description` |
 | `workflow_steps` | Pasos definidos en una plantilla | `workflow_id`, `step_order`, `role_name`, `label` |
 
-### 2.6 Dominio: Notificaciones
+### 2.7 Dominio: Notificaciones
 
 | Tabla | Descripción | Columnas Clave |
 |-------|-------------|----------------|
-| `notifications` | Notificaciones in-app por usuario | `user_id`, `title`, `message`, `type`, `request_id`, `is_read` |
+| `notifications` | Notificaciones in-app por usuario | `user_id`, `title`, `message`, `type` (`status_change`, `new_comment`, `assignment`, `external_data`), `request_id`, `is_read` |
 | `notification_events` | Catálogo de eventos notificables | `event_key`, `name`, `is_active`, `is_system` |
 | `notification_configs` | Configuración por evento (canales, plantillas, roles destino) | `event_id`, `channel_email`, `channel_inapp`, `target_roles`, `include_creator`, plantillas de email e in-app |
 
@@ -194,6 +203,7 @@ SELECT EXISTS (
 | `aprobada` | Aprobada | Todos los pasos de aprobación completados. |
 | `en_ejecucion` | En Ejecución | El ejecutor está procesando la compra. |
 | `en_espera` | En Espera | Ejecución pausada temporalmente. |
+| `esperando_tercero` | Esperando Tercero | Solicitud en espera de datos de un tercero externo invitado. |
 | `completada` | Completada | Compra finalizada. |
 | `rechazada` | Rechazada | Rechazada definitivamente. |
 | `anulada` | Anulada | Cancelada después de aprobación. |
@@ -318,6 +328,7 @@ Los archivos se suben asociados a un campo de formulario y se referencian en el 
 | Función | Propósito |
 |---------|-----------|
 | `send-notification` | Envía notificaciones por email (via webhook N8N) e in-app basándose en la configuración de `notification_configs` |
+| `external-form` | Gestiona formularios para terceros externos. GET: retorna campos y datos existentes con flags `_readonly`. POST: valida token, filtra solo campos con `external_mode = 'editable'`, actualiza `data_json` de la solicitud, marca invitación como completada y notifica al creador. |
 
 ### 8.1 Reglas de Entrega de Notificaciones (Filtrado Inteligente)
 
@@ -349,7 +360,8 @@ CREATE TYPE app_role AS ENUM (
 -- Estados de solicitud
 CREATE TYPE request_status AS ENUM (
   'borrador', 'en_revision', 'devuelta', 'aprobada',
-  'en_ejecucion', 'en_espera', 'completada', 'rechazada', 'anulada'
+  'en_ejecucion', 'en_espera', 'esperando_tercero',
+  'completada', 'rechazada', 'anulada'
 );
 
 -- Tipos de campo de formulario
