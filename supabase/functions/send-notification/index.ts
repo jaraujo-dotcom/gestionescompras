@@ -297,12 +297,26 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
+      const emailSubject = `Solicitud #${requestNumber} – ${requestData.title || templateName}`;
+
       await fetch(n8nWebhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          requestId, requestNumber, requestLink, eventType,
-          title, message, htmlBody,
+          requestId,
+          requestNumber,
+          requestTitle: requestData.title || "",
+          templateName,
+          requestLink,
+          eventType,
+          eventLabel: eventLabels[eventType] || eventType,
+          status: currentStatus,
+          statusLabel: statusLabels[currentStatus] || currentStatus,
+          triggeredByName: userName || "Sistema",
+          subject: emailSubject,
+          title,
+          message,
+          htmlBody,
           recipients: recipients.map((u: any) => ({ email: u.email, name: u.name })),
         }),
       });
