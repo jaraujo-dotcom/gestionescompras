@@ -118,6 +118,7 @@ export interface TableColumnSchema {
   label: string;
   type: 'text' | 'number' | 'date' | 'select' | 'boolean';
   required?: boolean;
+  is_external?: boolean;
   options?: string[];
   validation?: FieldValidation;
   rules?: FieldRule[]; // conditional rules for this column
