@@ -105,7 +105,11 @@ export default function RequestDetail() {
             section_id: f.section_id || null,
           }));
           setFields(parsedFields);
-          setHasExternalFields(fieldsRes.data.some((f: any) => f.is_external === true));
+          setHasExternalFields(fieldsRes.data.some((f: any) => 
+            f.is_external === true || 
+            (f.field_type === 'table' && Array.isArray(f.table_schema_json) && 
+              (f.table_schema_json as any[]).some((col: any) => col.is_external))
+          ));
         }
         setSections((sectionsRes.data || []) as FormSection[]);
       }
