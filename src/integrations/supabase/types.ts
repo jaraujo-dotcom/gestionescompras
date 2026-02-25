@@ -65,6 +65,7 @@ export type Database = {
         Row: {
           created_at: string
           dependency_json: Json | null
+          external_mode: string
           field_key: string
           field_order: number
           field_type: Database["public"]["Enums"]["field_type"]
@@ -83,6 +84,7 @@ export type Database = {
         Insert: {
           created_at?: string
           dependency_json?: Json | null
+          external_mode?: string
           field_key: string
           field_order?: number
           field_type: Database["public"]["Enums"]["field_type"]
@@ -101,6 +103,7 @@ export type Database = {
         Update: {
           created_at?: string
           dependency_json?: Json | null
+          external_mode?: string
           field_key?: string
           field_order?: number
           field_type?: Database["public"]["Enums"]["field_type"]
