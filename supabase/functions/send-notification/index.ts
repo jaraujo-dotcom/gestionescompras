@@ -297,7 +297,8 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-      const emailSubject = `${templateName} - ${requestData.title || "Sin título"} - ${requestNumber}`;
+      const eventLabel = eventLabels[eventType] || eventType || "Notificación";
+      const emailSubject = `${templateName} - ${requestData.title || "Sin título"} - #${requestNumber} | ${eventLabel}`;
 
       const plainLines = [
         `Tipo de solicitud: ${templateName}`,
