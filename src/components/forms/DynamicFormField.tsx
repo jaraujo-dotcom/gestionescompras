@@ -114,6 +114,8 @@ function TableFieldInput({
     const colVisible = shouldShowColumn(col.rules ?? [], row, allFormValues);
     if (!colVisible) return null;
 
+    const isColReadonly = readOnly || (col as any)._readonly === true;
+
     const colRequired = (col.required || false) || isColumnDynamicallyRequired(col.rules ?? [], row, allFormValues);
     const val = row[col.key];
     const errorKey = `${rowIdx}_${col.key}`;
@@ -126,8 +128,8 @@ function TableFieldInput({
             <Input
               value={String(val || '')}
               onChange={(e) => updateCell(rowIdx, col.key, e.target.value)}
-              disabled={readOnly}
-              className="h-8 text-xs"
+              disabled={isColReadonly}
+              className={`h-8 text-xs ${isColReadonly ? 'bg-muted/50' : ''}`}
             />
           );
         case 'number':
@@ -136,8 +138,8 @@ function TableFieldInput({
               type="number"
               value={val !== undefined && val !== null && val !== '' ? Number(val) : ''}
               onChange={(e) => updateCell(rowIdx, col.key, e.target.value ? parseFloat(e.target.value) : null)}
-              disabled={readOnly}
-              className="h-8 text-xs"
+              disabled={isColReadonly}
+              className={`h-8 text-xs ${isColReadonly ? 'bg-muted/50' : ''}`}
             />
           );
         case 'date':
@@ -146,8 +148,8 @@ function TableFieldInput({
               type="date"
               value={String(val || '')}
               onChange={(e) => updateCell(rowIdx, col.key, e.target.value)}
-              disabled={readOnly}
-              className="h-8 text-xs"
+              disabled={isColReadonly}
+              className={`h-8 text-xs ${isColReadonly ? 'bg-muted/50' : ''}`}
             />
           );
         case 'boolean':
@@ -156,7 +158,7 @@ function TableFieldInput({
               <Checkbox
                 checked={Boolean(val)}
                 onCheckedChange={(checked) => updateCell(rowIdx, col.key, checked)}
-                disabled={readOnly}
+                disabled={isColReadonly}
               />
             </div>
           );
@@ -166,9 +168,9 @@ function TableFieldInput({
             <Select
               value={String(val || '')}
               onValueChange={(v) => updateCell(rowIdx, col.key, v)}
-              disabled={readOnly}
+              disabled={isColReadonly}
             >
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger className={`h-8 text-xs ${isColReadonly ? 'bg-muted/50' : ''}`}>
                 <SelectValue placeholder="..." />
               </SelectTrigger>
               <SelectContent>
@@ -190,7 +192,7 @@ function TableFieldInput({
           {cellContent}
           {error && <p className="text-xs text-destructive mt-0.5">{error}</p>}
         </div>
-        {!readOnly && rowIdx < rows.length - 1 && (
+        {!isColReadonly && rowIdx < rows.length - 1 && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 text-muted-foreground hover:text-primary" onClick={() => copyCellDown(rowIdx, col.key)}>
