@@ -174,11 +174,54 @@ Deno.serve(async (req) => {
     // ── Email via n8n ──
     const n8nWebhookUrl = Deno.env.get("N8N_EMAIL_WEBHOOK_URL");
     if (n8nWebhookUrl) {
-      const safeTitle = htmlEscape(title);
+    const safeTitle = htmlEscape(title);
       const safeTemplateName = htmlEscape(templateName);
       const safeRequestNumber = htmlEscape(requestNumber);
       const safeRequestLink = htmlEscape(requestLink);
       const safeMessage = htmlEscape(message);
+      const safeRequestTitle = htmlEscape(requestData.title || "");
+      const safeUserName = htmlEscape(userName || "Sistema");
+      const safeEventType = htmlEscape(eventType || "");
+
+      const statusLabels: Record<string, string> = {
+        borrador: "Borrador",
+        esperando_tercero: "Esperando Tercero",
+        en_revision: "Pendiente de Aprobación",
+        devuelta: "Devuelta",
+        aprobada: "Aprobada",
+        en_ejecucion: "En Ejecución",
+        en_espera: "En Espera",
+        completada: "Completada",
+        rechazada: "Rechazada",
+        anulada: "Anulada",
+      };
+      const currentStatus = newStatus || requestStatus;
+      const safeStatusLabel = htmlEscape(statusLabels[currentStatus] || currentStatus);
+
+      const eventLabels: Record<string, string> = {
+        status_change: "Cambio de Estado",
+        new_comment: "Nuevo Comentario",
+        assignment: "Asignación",
+        approval: "Aprobación",
+        rejection: "Rechazo",
+        return: "Devolución",
+      };
+      const safeEventLabel = htmlEscape(eventLabels[eventType] || eventType || "Notificación");
+
+      // Status color
+      const statusColors: Record<string, string> = {
+        borrador: "#94a3b8",
+        en_revision: "#f59e0b",
+        devuelta: "#ef4444",
+        aprobada: "#22c55e",
+        en_ejecucion: "#3b82f6",
+        en_espera: "#f97316",
+        completada: "#10b981",
+        rechazada: "#dc2626",
+        anulada: "#6b7280",
+        esperando_tercero: "#8b5cf6",
+      };
+      const statusColor = statusColors[currentStatus] || "#64748b";
 
       const htmlBody = `
 <!DOCTYPE html>
@@ -190,24 +233,40 @@ Deno.serve(async (req) => {
         <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08);">
           <tr>
             <td style="background:linear-gradient(135deg,#1e40af,#3b82f6);padding:28px 32px;">
-              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">📋 Sistema de Solicitudes</h1>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td><h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">📋 Sistema de Solicitudes</h1></td>
+                  <td align="right"><span style="display:inline-block;background:rgba(255,255,255,0.2);color:#ffffff;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;">${safeEventLabel}</span></td>
+                </tr>
+              </table>
             </td>
           </tr>
           <tr>
             <td style="padding:32px;">
-              <h2 style="margin:0 0 16px;color:#1e293b;font-size:18px;font-weight:600;">${safeTitle}</h2>
-              <div style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">${safeMessage}</div>
+              <h2 style="margin:0 0 8px;color:#1e293b;font-size:18px;font-weight:600;">${safeTitle}</h2>
+              <p style="margin:0 0 20px;color:#64748b;font-size:13px;">Acción realizada por: <strong style="color:#334155;">${safeUserName}</strong></p>
+              <div style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;background:#f0f9ff;border-left:4px solid #3b82f6;padding:12px 16px;border-radius:0 8px 8px 0;">${safeMessage}</div>
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:28px;">
                 <tr>
                   <td style="padding:16px 20px;">
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
-                        <td style="padding:4px 0;color:#64748b;font-size:13px;width:140px;">Tipo</td>
-                        <td style="padding:4px 0;color:#1e293b;font-size:14px;font-weight:600;">${safeTemplateName}</td>
+                        <td style="padding:6px 0;color:#64748b;font-size:13px;width:140px;">Nº Solicitud</td>
+                        <td style="padding:6px 0;color:#1e293b;font-size:14px;font-weight:600;">#${safeRequestNumber}</td>
                       </tr>
                       <tr>
-                        <td style="padding:4px 0;color:#64748b;font-size:13px;">Nº Solicitud</td>
-                        <td style="padding:4px 0;color:#1e293b;font-size:14px;font-weight:600;">#${safeRequestNumber}</td>
+                        <td style="padding:6px 0;color:#64748b;font-size:13px;">Título</td>
+                        <td style="padding:6px 0;color:#1e293b;font-size:14px;font-weight:600;">${safeRequestTitle}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0;color:#64748b;font-size:13px;">Tipo de Solicitud</td>
+                        <td style="padding:6px 0;color:#1e293b;font-size:14px;font-weight:600;">${safeTemplateName}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0;color:#64748b;font-size:13px;">Estado Actual</td>
+                        <td style="padding:6px 0;">
+                          <span style="display:inline-block;background:${statusColor};color:#ffffff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">${safeStatusLabel}</span>
+                        </td>
                       </tr>
                     </table>
                   </td>
@@ -227,7 +286,7 @@ Deno.serve(async (req) => {
           <tr>
             <td style="padding:20px 32px;background-color:#f8fafc;border-top:1px solid #e2e8f0;">
               <p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;">
-                Este es un mensaje automático del Sistema de Solicitudes.
+                Este es un mensaje automático del Sistema de Solicitudes. No responda a este correo.
               </p>
             </td>
           </tr>
