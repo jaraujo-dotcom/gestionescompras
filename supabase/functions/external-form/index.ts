@@ -67,12 +67,33 @@ Deno.serve(async (req) => {
       }
 
       // Get ONLY external fields
-      const { data: fields } = await supabase
+      const { data: allExtFields } = await supabase
         .from('form_fields')
         .select('*')
         .eq('template_id', request.template_id)
         .eq('is_external', true)
         .order('field_order')
+
+      // Also get table fields that have external columns
+      const { data: tableFields } = await supabase
+        .from('form_fields')
+        .select('*')
+        .eq('template_id', request.template_id)
+        .eq('field_type', 'table')
+        .eq('is_external', false)
+        .order('field_order')
+
+      // Filter table fields to only include those with at least one external column
+      const filteredTableFields = (tableFields || []).filter(f => {
+        const schema = f.table_schema_json as any[]
+        return schema && schema.some((col: any) => col.is_external)
+      }).map(f => ({
+        ...f,
+        // Filter columns to only external ones
+        table_schema_json: ((f.table_schema_json as any[]) || []).filter((col: any) => col.is_external)
+      }))
+
+      const fields = [...(allExtFields || []), ...filteredTableFields]
 
       // Get sections for external fields
       const sectionIds = [...new Set((fields || []).filter(f => f.section_id).map(f => f.section_id))]
@@ -164,11 +185,21 @@ Deno.serve(async (req) => {
       // Get external field keys to validate
       const { data: externalFields } = await supabase
         .from('form_fields')
-        .select('field_key')
+        .select('field_key, field_type, table_schema_json, is_external')
         .eq('template_id', request.template_id)
-        .eq('is_external', true)
 
-      const allowedKeys = new Set((externalFields || []).map(f => f.field_key))
+      // Build allowed keys: fully external fields + table fields with external columns
+      const allowedKeys = new Set<string>()
+      for (const f of (externalFields || [])) {
+        if (f.is_external) {
+          allowedKeys.add(f.field_key)
+        } else if (f.field_type === 'table') {
+          const schema = f.table_schema_json as any[]
+          if (schema && schema.some((col: any) => col.is_external)) {
+            allowedKeys.add(f.field_key)
+          }
+        }
+      }
 
       // Filter values to only allowed keys
       const sanitizedValues: Record<string, any> = {}

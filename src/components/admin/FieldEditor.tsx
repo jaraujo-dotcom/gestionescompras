@@ -108,7 +108,7 @@ function SortableColumnRow({
 
   return (
     <div ref={setNodeRef} style={style} className="space-y-2">
-      <div className="grid grid-cols-[auto_1fr_1fr_auto_auto_auto] gap-2 items-end">
+      <div className="grid grid-cols-[auto_1fr_1fr_auto_auto_auto_auto] gap-2 items-end">
         <div className="flex items-center pt-5 cursor-grab text-muted-foreground" {...attributes} {...listeners}>
           <GripVertical className="w-3 h-3" />
         </div>
@@ -161,6 +161,13 @@ function SortableColumnRow({
             onCheckedChange={(checked) => updateCol({ required: checked })}
           />
           <Label className="text-xs">Req.</Label>
+        </div>
+        <div className="flex items-center gap-2 pb-1">
+          <Switch
+            checked={col.is_external || false}
+            onCheckedChange={(checked) => updateCol({ is_external: checked })}
+          />
+          <Label className="text-xs">Ext.</Label>
         </div>
         <Button
           variant="ghost"
