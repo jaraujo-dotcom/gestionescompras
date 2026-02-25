@@ -314,6 +314,7 @@ Deno.serve(async (req) => {
 
       const emailTextBody = plainLines.join("\n");
       const emailHtmlSnippet = plainLines.map((line) => htmlEscape(line)).join("<br>");
+      const emailMessageHtmlBlock = `<div style="white-space:normal;line-height:1.6;">${emailHtmlSnippet}</div>`;
 
       const n8nResponse = await fetch(n8nWebhookUrl, {
         method: "POST",
@@ -341,12 +342,14 @@ Deno.serve(async (req) => {
 
           // Body aliases (texto + html)
           summaryMessage: message,
-          message: emailTextBody,
+          message: emailMessageHtmlBlock,
+          messagePlain: emailTextBody,
           textBody: emailTextBody,
           text: emailTextBody,
-          body: emailTextBody,
+          body: emailMessageHtmlBlock,
+          bodyText: emailTextBody,
           plainText: emailTextBody,
-          messageHtml: emailHtmlSnippet,
+          messageHtml: emailMessageHtmlBlock,
           htmlSnippet: emailHtmlSnippet,
           htmlBody,
           html: htmlBody,
