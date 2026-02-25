@@ -85,15 +85,24 @@ Deno.serve(async (req) => {
 
       // Filter table fields to only include those with at least one external column
       const filteredTableFields = (tableFields || []).filter(f => {
-        const schema = f.table_schema_json as any[]
-        return schema && schema.some((col: any) => col.is_external)
-      }).map(f => ({
-        ...f,
-        // Filter columns to only external ones
-        table_schema_json: ((f.table_schema_json as any[]) || []).filter((col: any) => col.is_external)
-      }))
+        let schema = f.table_schema_json
+        if (typeof schema === 'string') schema = JSON.parse(schema)
+        return Array.isArray(schema) && schema.some((col: any) => col.is_external)
+      }).map(f => {
+        let schema = f.table_schema_json
+        if (typeof schema === 'string') schema = JSON.parse(schema)
+        return {
+          ...f,
+          // Filter columns to only external ones
+          table_schema_json: (schema as any[]).filter((col: any) => col.is_external)
+        }
+      })
 
       const fields = [...(allExtFields || []), ...filteredTableFields]
+      console.log('External fields count:', (allExtFields || []).length, 'Table fields with ext cols:', filteredTableFields.length, 'Total:', fields.length)
+      if (filteredTableFields.length > 0) {
+        console.log('Table field columns:', JSON.stringify(filteredTableFields.map(f => ({ key: f.field_key, cols: f.table_schema_json }))))
+      }
 
       // Get sections for external fields
       const sectionIds = [...new Set((fields || []).filter(f => f.section_id).map(f => f.section_id))]
@@ -194,8 +203,9 @@ Deno.serve(async (req) => {
         if (f.is_external) {
           allowedKeys.add(f.field_key)
         } else if (f.field_type === 'table') {
-          const schema = f.table_schema_json as any[]
-          if (schema && schema.some((col: any) => col.is_external)) {
+          let schema = f.table_schema_json
+          if (typeof schema === 'string') schema = JSON.parse(schema)
+          if (Array.isArray(schema) && schema.some((col: any) => col.is_external)) {
             allowedKeys.add(f.field_key)
           }
         }
