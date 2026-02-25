@@ -315,7 +315,7 @@ export default function TemplateEditor() {
           section_id: f.section_id ? (sectionIdMap[f.section_id] || f.section_id) : null,
         }));
 
-        const { error: fieldsError } = await supabase.from('form_fields').insert(fieldsToInsert);
+        const { error: fieldsError } = await supabase.from('form_fields').insert(fieldsToInsert as any);
         if (fieldsError) throw fieldsError;
       }
 
