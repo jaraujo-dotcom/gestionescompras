@@ -220,13 +220,16 @@ function TableFieldInput({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="text-xs whitespace-nowrap w-10 text-center">#</TableHead>
               {columns.filter(isColVisibleInAnyRow).map((col) => {
-                // Determine if any row makes this column dynamically required
                 const anyRequired = col.required ||
                   rows.some((row) => isColumnDynamicallyRequired(col.rules ?? [], row, allFormValues));
                 return (
                   <TableHead key={col.key} className="text-xs whitespace-nowrap">
                     {col.label}{anyRequired ? ' *' : ''}
+                    {(col as any)._readonly && (
+                      <span className="ml-1 text-muted-foreground text-[10px]">(info)</span>
+                    )}
                   </TableHead>
                 );
               })}
@@ -236,13 +239,16 @@ function TableFieldInput({
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length + (readOnly ? 0 : 1)} className="text-center text-xs text-muted-foreground py-4">
+                <TableCell colSpan={columns.length + 2} className="text-center text-xs text-muted-foreground py-4">
                   Sin filas. {!readOnly && 'Agregue una fila para comenzar.'}
                 </TableCell>
               </TableRow>
             ) : (
               rows.map((row, rowIdx) => (
                 <TableRow key={rowIdx}>
+                  <TableCell className="py-1 px-2 text-center text-xs text-muted-foreground font-mono">
+                    {rowIdx + 1}
+                  </TableCell>
                   {columns.map((col) => {
                     const cell = renderCell(col, row, rowIdx);
                     if (cell === null) return null;
