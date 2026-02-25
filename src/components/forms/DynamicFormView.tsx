@@ -95,6 +95,7 @@ function TableFieldView({ field, value }: { field: FormField; value: unknown }) 
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="text-xs whitespace-nowrap w-10 text-center">#</TableHead>
               {columns.map((col) => (
                 <TableHead key={col.key} className="text-xs whitespace-nowrap">{col.label}</TableHead>
               ))}
@@ -103,6 +104,7 @@ function TableFieldView({ field, value }: { field: FormField; value: unknown }) 
           <TableBody>
             {rows.map((row, idx) => (
               <TableRow key={idx}>
+                <TableCell className="text-xs py-1.5 text-center text-muted-foreground font-mono">{idx + 1}</TableCell>
                 {columns.map((col) => (
                   <TableCell key={col.key} className="text-xs py-1.5">
                     {formatCellValue(col, row[col.key])}
