@@ -27,7 +27,7 @@ export default function NotificationsList() {
 
   useEffect(() => {
     fetchNotifications();
-  }, []);
+  }, [user]);
 
   const fetchNotifications = async () => {
     if (!user) return;

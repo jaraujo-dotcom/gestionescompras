@@ -338,9 +338,9 @@ export function FieldEditor({ field, index, allFields, sections, onUpdate, onRem
         <GripVertical className="w-4 h-4" />
       </div>
 
-      <div className="flex-1 space-y-3">
+      <div className="flex-1 min-w-0 space-y-3">
         {/* Main field settings */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_auto] gap-3">
           <div className="space-y-1">
             <Label className="text-xs">Etiqueta *</Label>
             <Input
@@ -377,8 +377,8 @@ export function FieldEditor({ field, index, allFields, sections, onUpdate, onRem
               className="h-9"
             />
           </div>
-          <div className="flex items-end gap-3">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap sm:flex-nowrap items-end gap-3">
+            <div className="flex items-center gap-2 pb-2">
               <Switch
                 checked={field.is_required}
                 onCheckedChange={(checked) => onUpdate(index, { is_required: checked })}
