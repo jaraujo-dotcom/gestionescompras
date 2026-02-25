@@ -162,12 +162,21 @@ function SortableColumnRow({
           />
           <Label className="text-xs">Req.</Label>
         </div>
-        <div className="flex items-center gap-2 pb-1">
-          <Switch
-            checked={col.is_external || false}
-            onCheckedChange={(checked) => updateCol({ is_external: checked })}
-          />
-          <Label className="text-xs">Ext.</Label>
+        <div className="space-y-1">
+          <Label className="text-xs">Externo</Label>
+          <Select
+            value={col.external_mode || (col.is_external ? 'editable' : 'none')}
+            onValueChange={(val: 'none' | 'readonly' | 'editable') => updateCol({ external_mode: val, is_external: val !== 'none' })}
+          >
+            <SelectTrigger className="h-8 text-xs w-24">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No</SelectItem>
+              <SelectItem value="readonly">Solo vista</SelectItem>
+              <SelectItem value="editable">Llenado</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <Button
           variant="ghost"
