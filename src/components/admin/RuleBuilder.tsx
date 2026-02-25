@@ -30,9 +30,10 @@ interface RuleBuilderProps {
   availableFields: FieldDraft[];
   currentFieldType: string;
   tableColumns?: TableColumnSchema[];
+  overrideEffects?: { value: RuleEffect; label: string }[];
 }
 
-export function RuleBuilder({ rules, onChange, availableFields, currentFieldType, tableColumns = [] }: RuleBuilderProps) {
+export function RuleBuilder({ rules, onChange, availableFields, currentFieldType, tableColumns = [], overrideEffects }: RuleBuilderProps) {
   const addRule = () => {
     const newRule: FieldRule = {
       id: `rule_${Date.now()}`,
@@ -80,9 +81,10 @@ export function RuleBuilder({ rules, onChange, availableFields, currentFieldType
   };
 
   // Show 'options' effect for select and table fields
-  const filteredEffects = (currentFieldType === 'select' || currentFieldType === 'table')
-    ? EFFECTS
-    : EFFECTS.filter((e) => e.value !== 'options');
+  const filteredEffects = overrideEffects ??
+    ((currentFieldType === 'select' || currentFieldType === 'table')
+      ? EFFECTS
+      : EFFECTS.filter((e) => e.value !== 'options'));
 
   const selectColumnsInTable = tableColumns.filter((c) => c.type === 'select');
 

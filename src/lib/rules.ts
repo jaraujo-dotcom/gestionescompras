@@ -121,6 +121,38 @@ export function getTableColumnDynamicOptions(
   return null;
 }
 
+// --- Column-level rule helpers ---
+// These merge current row values with global form values so conditions can
+// reference both sibling columns (by their key) and top-level form fields.
+
+function mergedContext(
+  rowValues: Record<string, unknown>,
+  formValues: Record<string, unknown>
+): Record<string, unknown> {
+  return { ...formValues, ...rowValues };
+}
+
+export function shouldShowColumn(
+  rules: FieldRule[],
+  rowValues: Record<string, unknown>,
+  formValues: Record<string, unknown>
+): boolean {
+  const showRules = rules.filter((r) => r.effect === 'show');
+  if (showRules.length === 0) return true;
+  const ctx = mergedContext(rowValues, formValues);
+  return showRules.some((r) => evaluateRuleConditions(r, ctx));
+}
+
+export function isColumnDynamicallyRequired(
+  rules: FieldRule[],
+  rowValues: Record<string, unknown>,
+  formValues: Record<string, unknown>
+): boolean {
+  const reqRules = rules.filter((r) => r.effect === 'required');
+  const ctx = mergedContext(rowValues, formValues);
+  return reqRules.some((r) => evaluateRuleConditions(r, ctx));
+}
+
 // --- Expression parser ---
 
 const TOKEN_REGEX =

@@ -15,6 +15,12 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+// Only show/required effects make sense for individual columns
+const COLUMN_RULE_EFFECTS: Array<{ value: 'show' | 'required'; label: string }> = [
+  { value: 'show', label: 'Mostrar columna' },
+  { value: 'required', label: 'Hacer requerida' },
+];
+
 const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: 'text', label: 'Texto' },
   { value: 'number', label: 'Número' },
@@ -68,114 +74,157 @@ interface FieldEditorProps {
 }
 
 // Sortable table column row
-function SortableColumnRow({ col, colIdx, field, index, onUpdate }: {
+function SortableColumnRow({
+  col,
+  colIdx,
+  field,
+  index,
+  onUpdate,
+  allFieldsForRules,
+}: {
   col: TableColumnSchema;
   colIdx: number;
   field: FieldDraft;
   index: number;
   onUpdate: (index: number, updates: Partial<FieldDraft>) => void;
+  allFieldsForRules: FieldDraft[];
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: col.key });
+  const [showColRules, setShowColRules] = useState((col.rules?.length ?? 0) > 0);
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const updateCol = (updates: Partial<TableColumnSchema>) => {
+    const cols = [...(field.table_schema_json || [])];
+    cols[colIdx] = { ...col, ...updates };
+    onUpdate(index, { table_schema_json: cols });
+  };
+
+  const colRules = col.rules ?? [];
+
   return (
-    <div ref={setNodeRef} style={style} className="grid grid-cols-[auto_1fr_1fr_auto_auto_auto] gap-2 items-end">
-      <div className="flex items-center pt-5 cursor-grab text-muted-foreground" {...attributes} {...listeners}>
-        <GripVertical className="w-3 h-3" />
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">Etiqueta</Label>
-        <Input
-          value={col.label}
-          onChange={(e) => {
-            const cols = [...(field.table_schema_json || [])];
-            cols[colIdx] = { ...col, label: e.target.value, key: e.target.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || col.key };
-            onUpdate(index, { table_schema_json: cols });
-          }}
-          placeholder="Nombre columna"
-          className="h-8 text-xs"
-        />
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs">Tipo</Label>
-        <Select
-          value={col.type}
-          onValueChange={(val: TableColumnSchema['type']) => {
-            const cols = [...(field.table_schema_json || [])];
-            cols[colIdx] = { ...col, type: val };
-            onUpdate(index, { table_schema_json: cols });
-          }}
-        >
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {TABLE_COLUMN_TYPES.map((t) => (
-              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      {col.type === 'select' ? (
+    <div ref={setNodeRef} style={style} className="space-y-2">
+      <div className="grid grid-cols-[auto_1fr_1fr_auto_auto_auto] gap-2 items-end">
+        <div className="flex items-center pt-5 cursor-grab text-muted-foreground" {...attributes} {...listeners}>
+          <GripVertical className="w-3 h-3" />
+        </div>
         <div className="space-y-1">
-          <Label className="text-xs">Opciones</Label>
+          <Label className="text-xs">Etiqueta</Label>
           <Input
-            value={(col.options || []).join(', ')}
+            value={col.label}
             onChange={(e) => {
-              const cols = [...(field.table_schema_json || [])];
-              cols[colIdx] = { ...col, options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) };
-              onUpdate(index, { table_schema_json: cols });
+              updateCol({
+                label: e.target.value,
+                key: e.target.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || col.key,
+              });
             }}
-            placeholder="Op1, Op2, Op3"
+            placeholder="Nombre columna"
             className="h-8 text-xs"
           />
         </div>
-      ) : <div />}
-      <div className="flex items-center gap-2 pb-1">
-        <Switch
-          checked={col.required || false}
-          onCheckedChange={(checked) => {
-            const cols = [...(field.table_schema_json || [])];
-            cols[colIdx] = { ...col, required: checked };
+        <div className="space-y-1">
+          <Label className="text-xs">Tipo</Label>
+          <Select
+            value={col.type}
+            onValueChange={(val: TableColumnSchema['type']) => updateCol({ type: val })}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TABLE_COLUMN_TYPES.map((t) => (
+                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {col.type === 'select' ? (
+          <div className="space-y-1">
+            <Label className="text-xs">Opciones</Label>
+            <Input
+              value={(col.options || []).join(', ')}
+              onChange={(e) => {
+                updateCol({ options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) });
+              }}
+              placeholder="Op1, Op2, Op3"
+              className="h-8 text-xs"
+            />
+          </div>
+        ) : <div />}
+        <div className="flex items-center gap-2 pb-1">
+          <Switch
+            checked={col.required || false}
+            onCheckedChange={(checked) => updateCol({ required: checked })}
+          />
+          <Label className="text-xs">Req.</Label>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-destructive hover:text-destructive"
+          onClick={() => {
+            const cols = (field.table_schema_json || []).filter((_, i) => i !== colIdx);
             onUpdate(index, { table_schema_json: cols });
           }}
-        />
-        <Label className="text-xs">Req.</Label>
+        >
+          <Trash2 className="w-3 h-3" />
+        </Button>
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 text-destructive hover:text-destructive"
-        onClick={() => {
-          const cols = (field.table_schema_json || []).filter((_, i) => i !== colIdx);
-          onUpdate(index, { table_schema_json: cols });
-        }}
-      >
-        <Trash2 className="w-3 h-3" />
-      </Button>
+
+      {/* Validation */}
       {col.type !== 'boolean' && col.type !== 'select' && (
-        <div className="col-span-6 pl-6 border-l-2 border-muted">
+        <div className="pl-6 border-l-2 border-muted">
           <ValidationEditor
             fieldType={col.type}
             validation={parseValidation(col.validation)}
-            onChange={(v) => {
-              const cols = [...(field.table_schema_json || [])];
-              cols[colIdx] = { ...col, validation: v || undefined };
-              onUpdate(index, { table_schema_json: cols });
-            }}
+            onChange={(v) => updateCol({ validation: v || undefined })}
           />
         </div>
       )}
+
+      {/* Per-column conditional rules */}
+      <div className="pl-6 border-l-2 border-muted">
+        <Collapsible open={showColRules} onOpenChange={setShowColRules}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 text-xs">
+              {showColRules ? (
+                <ChevronUp className="w-3 h-3 mr-1" />
+              ) : (
+                <ChevronDown className="w-3 h-3 mr-1" />
+              )}
+              {colRules.length > 0 ? `Reglas de columna (${colRules.length})` : 'Agregar reglas a columna'}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2">
+            <RuleBuilder
+              rules={colRules}
+              onChange={(newRules) => updateCol({ rules: newRules.length > 0 ? newRules : undefined })}
+              availableFields={allFieldsForRules}
+              currentFieldType={col.type}
+              overrideEffects={COLUMN_RULE_EFFECTS}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
     </div>
   );
 }
 
 // Table columns editor with DnD
-function TableColumnsEditor({ field, index, onUpdate }: { field: FieldDraft; index: number; onUpdate: (index: number, updates: Partial<FieldDraft>) => void }) {
+function TableColumnsEditor({
+  field,
+  index,
+  onUpdate,
+  allFields,
+}: {
+  field: FieldDraft;
+  index: number;
+  onUpdate: (index: number, updates: Partial<FieldDraft>) => void;
+  allFields: FieldDraft[];
+}) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
@@ -191,6 +240,28 @@ function TableColumnsEditor({ field, index, onUpdate }: { field: FieldDraft; ind
       onUpdate(index, { table_schema_json: arrayMove([...cols], oldIndex, newIndex) });
     }
   };
+
+  // Build the list of "fields" available as rule conditions for each column:
+  // = sibling columns (as FieldDraft-like objects) + all form-level fields
+  const siblingColsAsFields: FieldDraft[] = cols.map((c) => ({
+    id: undefined,
+    field_key: c.key,
+    label: c.label || c.key,
+    field_type: c.type as FieldDraft['field_type'],
+    is_required: c.required ?? false,
+    placeholder: '',
+    options_json: c.options ?? [],
+    table_schema_json: [],
+    dependency_json: null,
+    validation_json: null,
+    field_order: 0,
+    section_id: null,
+  }));
+
+  const allFieldsForRules: FieldDraft[] = [
+    ...siblingColsAsFields,
+    ...allFields.filter((f) => f.label),
+  ];
 
   return (
     <div className="space-y-3 p-3 rounded-md border bg-background">
@@ -215,7 +286,15 @@ function TableColumnsEditor({ field, index, onUpdate }: { field: FieldDraft; ind
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={colIds} strategy={verticalListSortingStrategy}>
           {cols.map((col, colIdx) => (
-            <SortableColumnRow key={col.key} col={col} colIdx={colIdx} field={field} index={index} onUpdate={onUpdate} />
+            <SortableColumnRow
+              key={col.key}
+              col={col}
+              colIdx={colIdx}
+              field={field}
+              index={index}
+              onUpdate={onUpdate}
+              allFieldsForRules={allFieldsForRules}
+            />
           ))}
         </SortableContext>
       </DndContext>
@@ -239,7 +318,7 @@ export function FieldEditor({ field, index, allFields, sections, onUpdate, onRem
       <div className="flex items-start pt-2 text-muted-foreground cursor-grab" {...(dragHandleProps || {})}>
         <GripVertical className="w-4 h-4" />
       </div>
-      
+
       <div className="flex-1 space-y-3">
         {/* Main field settings */}
         <div className="grid grid-cols-4 gap-3">
@@ -309,7 +388,7 @@ export function FieldEditor({ field, index, allFields, sections, onUpdate, onRem
 
         {/* Table column schema editor with drag-and-drop */}
         {field.field_type === 'table' && (
-          <TableColumnsEditor field={field} index={index} onUpdate={onUpdate} />
+          <TableColumnsEditor field={field} index={index} onUpdate={onUpdate} allFields={allFields} />
         )}
 
         {/* Validation config */}

@@ -118,6 +118,7 @@ export interface TableColumnSchema {
   required?: boolean;
   options?: string[];
   validation?: FieldValidation;
+  rules?: FieldRule[]; // conditional rules for this column
 }
 
 // Database entities

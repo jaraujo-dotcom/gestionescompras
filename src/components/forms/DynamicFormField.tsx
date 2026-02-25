@@ -16,6 +16,8 @@ import {
   isFieldDynamicallyRequired,
   getFieldDynamicOptions,
   getTableColumnDynamicOptions,
+  shouldShowColumn,
+  isColumnDynamicallyRequired,
 } from '@/lib/rules';
 import { parseValidation, validateFieldValue, validateCellValue, describeValidation } from '@/lib/validations';
 
@@ -51,12 +53,14 @@ function TableFieldInput({
   onChange,
   readOnly,
   columnOptionsOverrides,
+  allFormValues,
 }: {
   columns: TableColumnSchema[];
   rows: Record<string, unknown>[];
   onChange: (rows: Record<string, unknown>[]) => void;
   readOnly: boolean;
   columnOptionsOverrides?: Record<string, string[]>;
+  allFormValues: Record<string, unknown>;
 }) {
   const [cellErrors, setCellErrors] = useState<Record<string, string>>({});
 
@@ -106,6 +110,11 @@ function TableFieldInput({
   };
 
   const renderCell = (col: TableColumnSchema, row: Record<string, unknown>, rowIdx: number) => {
+    // Check column visibility for this specific row
+    const colVisible = shouldShowColumn(col.rules ?? [], row, allFormValues);
+    if (!colVisible) return null;
+
+    const colRequired = (col.required || false) || isColumnDynamicallyRequired(col.rules ?? [], row, allFormValues);
     const val = row[col.key];
     const errorKey = `${rowIdx}_${col.key}`;
     const error = cellErrors[errorKey];
@@ -176,7 +185,7 @@ function TableFieldInput({
     })();
 
     return (
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center gap-0.5" data-required={colRequired || undefined}>
         <div className="flex-1">
           {cellContent}
           {error && <p className="text-xs text-destructive mt-0.5">{error}</p>}
@@ -195,17 +204,30 @@ function TableFieldInput({
     );
   };
 
+  // Determine which columns are visible in at least one row (for header rendering)
+  // A column with no rules is always shown; one with rules is shown if any row makes it visible
+  const isColVisibleInAnyRow = (col: TableColumnSchema): boolean => {
+    if (!col.rules || col.rules.length === 0) return true;
+    if (rows.length === 0) return true; // show by default when no rows yet
+    return rows.some((row) => shouldShowColumn(col.rules!, row, allFormValues));
+  };
+
   return (
     <div className="space-y-2">
       <div className="border rounded-md overflow-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              {columns.map((col) => (
-                <TableHead key={col.key} className="text-xs whitespace-nowrap">
-                  {col.label}{col.required ? ' *' : ''}
-                </TableHead>
-              ))}
+              {columns.filter(isColVisibleInAnyRow).map((col) => {
+                // Determine if any row makes this column dynamically required
+                const anyRequired = col.required ||
+                  rows.some((row) => isColumnDynamicallyRequired(col.rules ?? [], row, allFormValues));
+                return (
+                  <TableHead key={col.key} className="text-xs whitespace-nowrap">
+                    {col.label}{anyRequired ? ' *' : ''}
+                  </TableHead>
+                );
+              })}
               {!readOnly && <TableHead className="w-10" />}
             </TableRow>
           </TableHeader>
@@ -219,11 +241,15 @@ function TableFieldInput({
             ) : (
               rows.map((row, rowIdx) => (
                 <TableRow key={rowIdx}>
-                  {columns.map((col) => (
-                    <TableCell key={col.key} className="py-1 px-2">
-                      {renderCell(col, row, rowIdx)}
-                    </TableCell>
-                  ))}
+                  {columns.map((col) => {
+                    const cell = renderCell(col, row, rowIdx);
+                    if (cell === null) return null;
+                    return (
+                      <TableCell key={col.key} className="py-1 px-2">
+                        {cell}
+                      </TableCell>
+                    );
+                  })}
                   {!readOnly && (
                     <TableCell className="py-1 px-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeRow(rowIdx)}>
@@ -275,7 +301,7 @@ function FileFieldInput({
       for (const file of Array.from(selectedFiles)) {
         const ext = file.name.split('.').pop();
         const path = `${user.id}/${fieldKey}/${Date.now()}_${file.name}`;
-        
+
         const { error } = await supabase.storage
           .from('form-attachments')
           .upload(path, file);
@@ -498,6 +524,7 @@ export function DynamicFormField({
             onChange={(newRows) => handleChange(field.field_key, newRows)}
             readOnly={readOnly}
             columnOptionsOverrides={Object.keys(columnOptionsOverrides).length > 0 ? columnOptionsOverrides : undefined}
+            allFormValues={allValues}
           />
         );
       }
