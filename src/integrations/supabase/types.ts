@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      external_invitations: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          expires_at: string
+          guest_email: string | null
+          guest_name: string | null
+          id: string
+          request_id: string
+          status: string
+          token: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          expires_at: string
+          guest_email?: string | null
+          guest_name?: string | null
+          id?: string
+          request_id: string
+          status?: string
+          token: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          guest_email?: string | null
+          guest_name?: string | null
+          id?: string
+          request_id?: string
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_invitations_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       form_fields: {
         Row: {
           created_at: string
@@ -22,6 +69,7 @@ export type Database = {
           field_order: number
           field_type: Database["public"]["Enums"]["field_type"]
           id: string
+          is_external: boolean
           is_required: boolean
           label: string
           options_json: Json | null
@@ -39,6 +87,7 @@ export type Database = {
           field_order?: number
           field_type: Database["public"]["Enums"]["field_type"]
           id?: string
+          is_external?: boolean
           is_required?: boolean
           label: string
           options_json?: Json | null
@@ -56,6 +105,7 @@ export type Database = {
           field_order?: number
           field_type?: Database["public"]["Enums"]["field_type"]
           id?: string
+          is_external?: boolean
           is_required?: boolean
           label?: string
           options_json?: Json | null
@@ -827,6 +877,7 @@ export type Database = {
         | "rechazada"
         | "anulada"
         | "en_espera"
+        | "esperando_tercero"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -982,6 +1033,7 @@ export const Constants = {
         "rechazada",
         "anulada",
         "en_espera",
+        "esperando_tercero",
       ],
     },
   },

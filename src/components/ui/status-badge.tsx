@@ -10,10 +10,12 @@ import {
   XCircle,
   Ban,
   PauseCircle,
+  UserCheck,
 } from 'lucide-react';
 
 const statusIcons: Record<RequestStatus, React.ElementType> = {
   borrador: FileEdit,
+  esperando_tercero: UserCheck,
   en_revision: Eye,
   devuelta: RotateCcw,
   aprobada: CheckCircle,

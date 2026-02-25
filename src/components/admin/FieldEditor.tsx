@@ -53,6 +53,7 @@ export interface FieldDraft {
   label: string;
   field_type: FieldType;
   is_required: boolean;
+  is_external: boolean;
   placeholder: string;
   options_json: string[];
   table_schema_json: TableColumnSchema[];
@@ -249,6 +250,7 @@ function TableColumnsEditor({
     label: c.label || c.key,
     field_type: c.type as FieldDraft['field_type'],
     is_required: c.required ?? false,
+    is_external: false,
     placeholder: '',
     options_json: c.options ?? [],
     table_schema_json: [],
@@ -365,6 +367,13 @@ export function FieldEditor({ field, index, allFields, sections, onUpdate, onRem
                 onCheckedChange={(checked) => onUpdate(index, { is_required: checked })}
               />
               <Label className="text-xs">Requerido</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={field.is_external}
+                onCheckedChange={(checked) => onUpdate(index, { is_external: checked })}
+              />
+              <Label className="text-xs">Externo</Label>
             </div>
           </div>
         </div>
