@@ -83,22 +83,33 @@ Deno.serve(async (req) => {
         .eq('is_external', false)
         .order('field_order')
 
-      // Filter table fields to only include those with at least one external column
+      // Filter table fields to only include those with at least one external column (editable or readonly)
       const filteredTableFields = (tableFields || []).filter(f => {
         let schema = f.table_schema_json
         if (typeof schema === 'string') schema = JSON.parse(schema)
-        return Array.isArray(schema) && schema.some((col: any) => col.is_external)
+        return Array.isArray(schema) && schema.some((col: any) => {
+          const mode = col.external_mode || (col.is_external ? 'editable' : 'none')
+          return mode !== 'none'
+        })
       }).map(f => {
         let schema = f.table_schema_json
         if (typeof schema === 'string') schema = JSON.parse(schema)
         return {
           ...f,
-          // Send ALL columns: external ones editable, others as read-only context
-          table_schema_json: (schema as any[]).map((col: any) => ({
-            ...col,
-            rules: undefined, // strip rules (may reference internal fields)
-            _readonly: !col.is_external, // non-external columns are informational only
-          }))
+          // Send columns that have any external visibility; mark readonly ones
+          table_schema_json: (schema as any[])
+            .filter((col: any) => {
+              const mode = col.external_mode || (col.is_external ? 'editable' : 'none')
+              return mode !== 'none'
+            })
+            .map((col: any) => {
+              const mode = col.external_mode || (col.is_external ? 'editable' : 'none')
+              return {
+                ...col,
+                rules: undefined, // strip rules (may reference internal fields)
+                _readonly: mode === 'readonly',
+              }
+            })
         }
       })
 
@@ -212,7 +223,10 @@ Deno.serve(async (req) => {
         } else if (f.field_type === 'table') {
           let schema = f.table_schema_json
           if (typeof schema === 'string') schema = JSON.parse(schema)
-          if (Array.isArray(schema) && schema.some((col: any) => col.is_external)) {
+          if (Array.isArray(schema) && schema.some((col: any) => {
+            const mode = col.external_mode || (col.is_external ? 'editable' : 'none')
+            return mode !== 'none'
+          })) {
             allowedKeys.add(f.field_key)
           }
         }

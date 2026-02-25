@@ -113,12 +113,16 @@ export interface DateValidation {
 export type FieldValidation = TextValidation | NumberValidation | DateValidation;
 
 // Table column schema
+// External mode for table columns: how the column behaves for external guests
+export type ColumnExternalMode = 'none' | 'readonly' | 'editable';
+
 export interface TableColumnSchema {
   key: string;
   label: string;
   type: 'text' | 'number' | 'date' | 'select' | 'boolean';
   required?: boolean;
-  is_external?: boolean;
+  is_external?: boolean; // legacy, kept for backward compat
+  external_mode?: ColumnExternalMode; // new: none | readonly | editable
   options?: string[];
   validation?: FieldValidation;
   rules?: FieldRule[]; // conditional rules for this column
