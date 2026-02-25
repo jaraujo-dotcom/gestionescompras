@@ -22,7 +22,7 @@ import TemplatesList from "./pages/admin/TemplatesList";
 import TemplateEditor from "./pages/admin/TemplateEditor";
 import NotFound from "./pages/NotFound";
 import NotificationsList from "./pages/notifications/NotificationsList";
-import NotificationSettings from "./pages/admin/NotificationSettings";
+
 import GroupsList from "./pages/admin/GroupsList";
 import WorkflowList from "./pages/admin/workflows/WorkflowList";
 import WorkflowEditor from "./pages/admin/workflows/WorkflowEditor";
@@ -72,7 +72,7 @@ const App = () => (
               <Route path="/admin/users" element={<UsersList />} />
               <Route path="/admin/templates" element={<TemplatesList />} />
               <Route path="/admin/templates/:id" element={<TemplateEditor />} />
-              <Route path="/admin/notifications" element={<NotificationSettings />} />
+              
               <Route path="/admin/groups" element={<GroupsList />} />
               <Route path="/admin/workflows" element={<WorkflowList />} />
               <Route path="/admin/workflows/new" element={<WorkflowEditor />} />
