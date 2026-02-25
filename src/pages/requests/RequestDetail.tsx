@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { DynamicFormView } from '@/components/forms/DynamicFormView';
-import { RequestComments } from '@/components/requests/RequestComments';
+import { RequestTimeline } from '@/components/requests/RequestTimeline';
 import {
   Request,
   RequestStatusHistory,
@@ -19,7 +19,7 @@ import {
   TableColumnSchema,
   STATUS_LABELS,
 } from '@/types/database';
-import { ArrowLeft, Edit, Send, Loader2, Clock, User, MessageSquare, Trash2, Ban, FileSpreadsheet, Users2, ShieldCheck, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Edit, Send, Loader2, Clock, User, Trash2, Ban, FileSpreadsheet, Users2, ShieldCheck, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdminStatusChanger } from '@/components/requests/AdminStatusChanger';
 import { exportToExcel } from '@/lib/exportRequest';
@@ -404,40 +404,7 @@ export default function RequestDetail() {
         />
       )}
 
-      <RequestComments requestId={request.id} requestNumber={request.request_number} />
-
-      <Card>
-        <CardHeader><CardTitle>Historial</CardTitle></CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {history.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sin historial</p>
-            ) : (
-              history.map((entry) => (
-                <div key={entry.id} className="flex gap-3 pb-4 border-b last:border-0">
-                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium">{entry.profile?.name || 'Usuario'}</span>
-                      <StatusBadge status={entry.to_status as RequestStatus} />
-                    </div>
-                    {entry.comment && (
-                      <p className="text-sm text-muted-foreground flex items-start gap-1">
-                        <MessageSquare className="w-3 h-3 mt-1 shrink-0" /> {entry.comment}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {new Date(entry.created_at).toLocaleString('es-ES')}
-                    </p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <RequestTimeline requestId={request.id} requestNumber={request.request_number} history={history} />
     </div>
   );
 }
