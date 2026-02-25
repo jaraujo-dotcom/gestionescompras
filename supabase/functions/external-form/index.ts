@@ -66,32 +66,39 @@ Deno.serve(async (req) => {
         })
       }
 
-      // Get ONLY external fields
-      const { data: allExtFields } = await supabase
+      // Get fields that are external (editable or readonly)
+      const { data: allFields } = await supabase
         .from('form_fields')
         .select('*')
         .eq('template_id', request.template_id)
-        .eq('is_external', true)
         .order('field_order')
+
+      // Separate: fully external fields (is_external=true) and check external_mode
+      const allExtFields = (allFields || []).filter(f => {
+        const mode = (f as any).external_mode || (f.is_external ? 'editable' : 'none')
+        return mode !== 'none' && f.field_type !== 'table'
+      }).map(f => {
+        const mode = (f as any).external_mode || (f.is_external ? 'editable' : 'none')
+        return { ...f, _readonly: mode === 'readonly' }
+      })
 
       // Also get table fields that have external columns
-      const { data: tableFields } = await supabase
-        .from('form_fields')
-        .select('*')
-        .eq('template_id', request.template_id)
-        .eq('field_type', 'table')
-        .eq('is_external', false)
-        .order('field_order')
-
-      // Filter table fields to only include those with at least one external column (editable or readonly)
-      const filteredTableFields = (tableFields || []).filter(f => {
+      const tableFields = (allFields || []).filter(f => {
+        if (f.field_type !== 'table') return false
+        // Check if the field itself is not already in allExtFields
+        const fieldMode = (f as any).external_mode || (f.is_external ? 'editable' : 'none')
+        if (fieldMode !== 'none') return false // already handled above (though tables shouldn't be)
+        // Check columns
         let schema = f.table_schema_json
         if (typeof schema === 'string') schema = JSON.parse(schema)
         return Array.isArray(schema) && schema.some((col: any) => {
-          const mode = col.external_mode || (col.is_external ? 'editable' : 'none')
-          return mode !== 'none'
+          const colMode = col.external_mode || (col.is_external ? 'editable' : 'none')
+          return colMode !== 'none'
         })
-      }).map(f => {
+      })
+
+      // Process table fields to mark readonly columns
+      const filteredTableFields = tableFields.map(f => {
         let schema = f.table_schema_json
         if (typeof schema === 'string') schema = JSON.parse(schema)
         return {

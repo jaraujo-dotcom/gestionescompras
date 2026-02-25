@@ -403,9 +403,11 @@ export function DynamicFormField({
   value,
   onChange,
   allValues,
-  readOnly = false,
+  readOnly: rawReadOnly = false,
   externalError = null,
 }: DynamicFormFieldProps) {
+  // Field-level readonly: either explicit readOnly prop or _readonly flag from edge function
+  const readOnly = rawReadOnly || (field as any)._readonly === true;
   const [fieldError, setFieldError] = useState<string | null>(null);
 
   const isVisible = shouldShowField(field.dependency_json, allValues);
@@ -434,7 +436,8 @@ export function DynamicFormField({
     return null;
   }
 
-  const labelText = `${field.label}${isRequired ? ' *' : ''}`;
+  const isFieldReadonly = (field as any)._readonly === true;
+  const labelText = `${field.label}${isRequired ? ' *' : ''}${isFieldReadonly ? ' (solo vista)' : ''}`;
 
   const handleChange = (key: string, newValue: unknown) => {
     onChange(key, newValue);

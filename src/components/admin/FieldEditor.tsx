@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FieldType, FieldRule, FieldValidation, TableColumnSchema } from '@/types/database';
+import { FieldType, FieldRule, FieldValidation, TableColumnSchema, ColumnExternalMode } from '@/types/database';
 import { Trash2, GripVertical, ChevronDown, ChevronUp, Plus, Copy } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { RuleBuilder } from './RuleBuilder';
@@ -54,6 +54,7 @@ export interface FieldDraft {
   field_type: FieldType;
   is_required: boolean;
   is_external: boolean;
+  external_mode?: ColumnExternalMode;
   placeholder: string;
   options_json: string[];
   table_schema_json: TableColumnSchema[];
@@ -384,12 +385,21 @@ export function FieldEditor({ field, index, allFields, sections, onUpdate, onRem
               />
               <Label className="text-xs">Requerido</Label>
             </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={field.is_external}
-                onCheckedChange={(checked) => onUpdate(index, { is_external: checked })}
-              />
+            <div className="space-y-1">
               <Label className="text-xs">Externo</Label>
+              <Select
+                value={field.external_mode || (field.is_external ? 'editable' : 'none')}
+                onValueChange={(val: ColumnExternalMode) => onUpdate(index, { external_mode: val, is_external: val !== 'none' })}
+              >
+                <SelectTrigger className="h-9 w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No</SelectItem>
+                  <SelectItem value="readonly">Solo vista</SelectItem>
+                  <SelectItem value="editable">Llenado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
