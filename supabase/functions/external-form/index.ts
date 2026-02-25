@@ -93,10 +93,12 @@ Deno.serve(async (req) => {
         if (typeof schema === 'string') schema = JSON.parse(schema)
         return {
           ...f,
-          // Only keep external columns, strip their rules (may reference internal fields)
-          table_schema_json: (schema as any[])
-            .filter((col: any) => col.is_external)
-            .map((col: any) => ({ ...col, rules: undefined }))
+          // Send ALL columns: external ones editable, others as read-only context
+          table_schema_json: (schema as any[]).map((col: any) => ({
+            ...col,
+            rules: undefined, // strip rules (may reference internal fields)
+            _readonly: !col.is_external, // non-external columns are informational only
+          }))
         }
       })
 
