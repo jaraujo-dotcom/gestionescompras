@@ -297,25 +297,20 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-      const fallbackSubject = `Solicitud #${requestNumber}: ${requestData.title || templateName}`;
-      const emailSubject = (title && String(title).trim().length > 0)
-        ? String(title).trim()
-        : fallbackSubject;
+      const emailSubject = `${templateName} - ${requestData.title || "Sin título"} - #${requestNumber}`;
 
       const emailTextBody = [
-        `${emailSubject}`,
-        "",
-        `Tipo de solicitud: ${templateName}`,
-        `Título: ${requestData.title || "Sin título"}`,
-        `Número de solicitud: #${requestNumber}`,
-        `Evento: ${eventLabels[eventType] || eventType || "Notificación"}`,
-        `Estado actual: ${statusLabels[currentStatus] || currentStatus}`,
-        `Acción realizada por: ${userName || "Sistema"}`,
-        "",
-        `Detalle: ${message}`,
-        "",
-        `Ver solicitud: ${requestLink}`,
-      ].join("\n");
+        `<b>Tipo de solicitud:</b> ${htmlEscape(templateName)}`,
+        `<b>Título:</b> ${safeRequestTitle || "Sin título"}`,
+        `<b>Nº Solicitud:</b> #${safeRequestNumber}`,
+        `<b>Evento:</b> ${htmlEscape(eventLabels[eventType] || eventType || "Notificación")}`,
+        `<b>Estado actual:</b> ${safeStatusLabel}`,
+        `<b>Acción realizada por:</b> ${safeUserName}`,
+        ``,
+        `<b>Detalle:</b> ${safeMessage}`,
+        ``,
+        `<a href="${safeRequestLink}">Ver solicitud</a>`,
+      ].join("<br>");
 
       const n8nResponse = await fetch(n8nWebhookUrl, {
         method: "POST",
