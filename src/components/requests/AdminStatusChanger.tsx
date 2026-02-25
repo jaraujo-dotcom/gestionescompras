@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { RequestStatus, STATUS_LABELS } from '@/types/database';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Shield, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -29,18 +28,13 @@ interface AdminStatusChangerProps {
 }
 
 export function AdminStatusChanger({ requestId, currentStatus, userId, onStatusChanged }: AdminStatusChangerProps) {
-  const [newStatus, setNewStatus] = useState<RequestStatus | ''>('');
   const [comment, setComment] = useState('');
   const [saving, setSaving] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const availableStatuses = ALL_STATUSES.filter((s) => s !== currentStatus);
 
-  const handleChangeStatus = async () => {
-    if (!newStatus) {
-      toast.error('Seleccione un estado');
-      return;
-    }
-
+  const handleChangeStatus = async (newStatus: RequestStatus) => {
     setSaving(true);
     try {
       const { error: updateError } = await supabase
@@ -50,7 +44,7 @@ export function AdminStatusChanger({ requestId, currentStatus, userId, onStatusC
 
       if (updateError) throw updateError;
 
-      const { error: historyError } = await supabase.from('request_status_history').insert({
+      await supabase.from('request_status_history').insert({
         request_id: requestId,
         from_status: currentStatus,
         to_status: newStatus,
@@ -58,11 +52,9 @@ export function AdminStatusChanger({ requestId, currentStatus, userId, onStatusC
         comment: comment.trim() || `Estado cambiado por administrador: ${STATUS_LABELS[currentStatus]} → ${STATUS_LABELS[newStatus]}`,
       });
 
-      if (historyError) throw historyError;
-
       toast.success(`Estado cambiado a ${STATUS_LABELS[newStatus]}`);
-      setNewStatus('');
       setComment('');
+      setOpen(false);
       onStatusChanged();
     } catch (error: any) {
       console.error('Error changing status:', error);
@@ -73,44 +65,36 @@ export function AdminStatusChanger({ requestId, currentStatus, userId, onStatusC
   };
 
   return (
-    <Card className="border-primary/30">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Shield className="w-4 h-4 text-primary" />
-          Cambiar Estado (Admin)
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Estado actual:</span>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button className="inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity" title="Cambiar estado (Admin)">
           <StatusBadge status={currentStatus} />
-        </div>
-
-        <Select value={newStatus} onValueChange={(v) => setNewStatus(v as RequestStatus)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Seleccionar nuevo estado..." />
-          </SelectTrigger>
-          <SelectContent>
-            {availableStatuses.map((status) => (
-              <SelectItem key={status} value={status}>
-                {STATUS_LABELS[status]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
+          <Shield className="w-3.5 h-3.5 text-primary" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-3 space-y-2" align="start">
+        <p className="text-xs font-medium text-muted-foreground mb-2">Cambiar estado:</p>
         <Textarea
           placeholder="Comentario (opcional)"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           rows={2}
+          className="text-xs"
         />
-
-        <Button onClick={handleChangeStatus} disabled={saving || !newStatus} className="w-full">
-          {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Shield className="w-4 h-4 mr-2" />}
-          Cambiar Estado
-        </Button>
-      </CardContent>
-    </Card>
+        <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+          {availableStatuses.map((status) => (
+            <button
+              key={status}
+              disabled={saving}
+              onClick={() => handleChangeStatus(status)}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-accent transition-colors text-left disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+              <StatusBadge status={status} />
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

@@ -298,7 +298,11 @@ export default function RequestDetail() {
             <div className="flex items-center gap-3">
               <span className="font-medium text-sm font-mono text-muted-foreground">#{formatRequestNumber(request.request_number)}</span>
               <h1 className="text-2xl font-bold">{request.title}</h1>
-              <StatusBadge status={request.status as RequestStatus} />
+              {hasRole('administrador') && user ? (
+                <AdminStatusChanger requestId={request.id} currentStatus={request.status as RequestStatus} userId={user.id} onStatusChanged={fetchRequestData} />
+              ) : (
+                <StatusBadge status={request.status as RequestStatus} />
+              )}
               {request.status === 'en_revision' && (
                 <Link to={`/review/${request.id}`}>
                   <Button variant="secondary" size="sm" className="ml-2">
@@ -389,9 +393,6 @@ export default function RequestDetail() {
         </Card>
       )}
 
-      {hasRole('administrador') && request && user && (
-        <AdminStatusChanger requestId={request.id} currentStatus={request.status as RequestStatus} userId={user.id} onStatusChanged={fetchRequestData} />
-      )}
 
       {request && (
         <ExternalInviteDialog
