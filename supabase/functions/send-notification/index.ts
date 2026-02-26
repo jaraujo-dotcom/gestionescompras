@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
     // ── Email via n8n ──
     const n8nWebhookUrl = Deno.env.get("N8N_EMAIL_WEBHOOK_URL");
     if (n8nWebhookUrl) {
-    const safeTitle = htmlEscape(title);
+      const safeTitle = htmlEscape(title);
       const safeTemplateName = htmlEscape(templateName);
       const safeRequestNumber = htmlEscape(requestNumber);
       const safeRequestLink = htmlEscape(requestLink);
@@ -298,7 +298,14 @@ Deno.serve(async (req) => {
 </html>`;
 
       const eventLabel = eventLabels[eventType] || eventType || "Notificación";
-      const emailSubject = `${requestData.title || "Sin título"} | ${eventLabel} [${templateName}] #${requestNumber}`;
+
+      let subjectAction = eventLabel;
+      if (['status_change', 'approval', 'rejection', 'return'].includes(eventType)) {
+        const rawStatus = statusLabels[currentStatus] || currentStatus;
+        subjectAction = `Solicitud ${rawStatus}`;
+      }
+
+      const emailSubject = `${requestData.title || "Sin título"} - ${subjectAction} | ${templateName} (#${requestNumber})`;
 
       const plainLines = [
         `Tipo de solicitud: ${templateName}`,
