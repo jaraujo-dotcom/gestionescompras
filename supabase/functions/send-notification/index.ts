@@ -144,12 +144,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Exclude the person who triggered the notification
-    if (triggeredBy) userIds.delete(triggeredBy);
-
-    // Always re-add creator so they're informed of every event on their request
+    // Always include creator
     if (requestData.created_by) userIds.add(requestData.created_by);
-    if (triggeredBy) userIds.delete(triggeredBy);
 
     const { data: profiles } = await supabase.from("profiles").select("id, name, email").in("id", Array.from(userIds));
     const recipients = profiles || [];
