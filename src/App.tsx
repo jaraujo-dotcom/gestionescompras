@@ -31,6 +31,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ChangePassword from "./pages/ChangePassword";
 import GuestForm from "./pages/external/GuestForm";
+import AuditMasters from "./pages/audit/AuditMasters";
+import AuditReports from "./pages/audit/AuditReports";
 
 const queryClient = new QueryClient();
 
