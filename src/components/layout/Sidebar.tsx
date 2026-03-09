@@ -74,10 +74,12 @@ export function Sidebar() {
     }
   ];
 
+  const showAuditModule = import.meta.env.VITE_SHOW_AUDIT_MODULE === 'true';
+
   const filteredWorkNav = workNav.filter(item => item.show);
   const isWorkRouteActive = workNav.some(item => location.pathname === item.href || location.pathname.startsWith(item.href + '/'));
   const isAdminRouteActive = adminNav.some(item => location.pathname === item.href);
-  const isAuditRouteActive = auditNav.some(item => location.pathname === item.href);
+  const isAuditRouteActive = showAuditModule && auditNav.some(item => location.pathname === item.href);
   const [workOpen, setWorkOpen] = useState(isWorkRouteActive);
   const [adminOpen, setAdminOpen] = useState(isAdminRouteActive);
   const [auditOpen, setAuditOpen] = useState(isAuditRouteActive);
