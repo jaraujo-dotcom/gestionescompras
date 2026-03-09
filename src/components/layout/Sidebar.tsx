@@ -74,10 +74,12 @@ export function Sidebar() {
     }
   ];
 
+  const showAuditModule = import.meta.env.VITE_SHOW_AUDIT_MODULE === 'true';
+
   const filteredWorkNav = workNav.filter(item => item.show);
   const isWorkRouteActive = workNav.some(item => location.pathname === item.href || location.pathname.startsWith(item.href + '/'));
   const isAdminRouteActive = adminNav.some(item => location.pathname === item.href);
-  const isAuditRouteActive = auditNav.some(item => location.pathname === item.href);
+  const isAuditRouteActive = showAuditModule && auditNav.some(item => location.pathname === item.href);
   const [workOpen, setWorkOpen] = useState(isWorkRouteActive);
   const [adminOpen, setAdminOpen] = useState(isAdminRouteActive);
   const [auditOpen, setAuditOpen] = useState(isAuditRouteActive);
@@ -131,32 +133,33 @@ export function Sidebar() {
         )
       )}
 
-      {/* Admin Group */}
       {/* Audit Group */}
-      {collapsed ? (
-        auditNav.map(item => {
-          const isActive = location.pathname === item.href;
-          return <Link key={item.name} to={item.href} className={cn('flex items-center gap-3 px-3 py-2 rounded-lg transition-colors', isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent text-sidebar-foreground')}>
-            <item.icon className="w-5 h-5 shrink-0" />
-          </Link>;
-        })
-      ) : (
-        <Collapsible open={auditOpen} onOpenChange={setAuditOpen} className="mt-3">
-          <CollapsibleTrigger className="flex items-center gap-3 px-3 py-2 rounded-lg w-full text-left text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
-            <SearchCheck className="w-5 h-5 shrink-0" />
-            <span className="flex-1 text-sm font-medium">Auditor de Maestros</span>
-            <ChevronDown className={cn('w-4 h-4 transition-transform', auditOpen && 'rotate-180')} />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pl-4 space-y-1 mt-1">
-            {auditNav.map(item => {
-              const isActive = location.pathname === item.href;
-              return <Link key={item.name} to={item.href} className={cn('flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm', isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent text-sidebar-foreground')}>
-                <item.icon className="w-4 h-4 shrink-0" />
-                <span>{item.name}</span>
-              </Link>;
-            })}
-          </CollapsibleContent>
-        </Collapsible>
+      {showAuditModule && (
+        collapsed ? (
+          auditNav.map(item => {
+            const isActive = location.pathname === item.href;
+            return <Link key={item.name} to={item.href} className={cn('flex items-center gap-3 px-3 py-2 rounded-lg transition-colors', isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent text-sidebar-foreground')}>
+              <item.icon className="w-5 h-5 shrink-0" />
+            </Link>;
+          })
+        ) : (
+          <Collapsible open={auditOpen} onOpenChange={setAuditOpen} className="mt-3">
+            <CollapsibleTrigger className="flex items-center gap-3 px-3 py-2 rounded-lg w-full text-left text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
+              <SearchCheck className="w-5 h-5 shrink-0" />
+              <span className="flex-1 text-sm font-medium">Auditor de Maestros</span>
+              <ChevronDown className={cn('w-4 h-4 transition-transform', auditOpen && 'rotate-180')} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pl-4 space-y-1 mt-1">
+              {auditNav.map(item => {
+                const isActive = location.pathname === item.href;
+                return <Link key={item.name} to={item.href} className={cn('flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm', isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent text-sidebar-foreground')}>
+                  <item.icon className="w-4 h-4 shrink-0" />
+                  <span>{item.name}</span>
+                </Link>;
+              })}
+            </CollapsibleContent>
+          </Collapsible>
+        )
       )}
 
       {/* Admin Group */}
