@@ -100,7 +100,7 @@ export function Sidebar() {
           <Collapsible open={workOpen} onOpenChange={setWorkOpen} className="mt-3">
             <CollapsibleTrigger className="flex items-center gap-3 px-3 py-2 rounded-lg w-full text-left text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
               <Briefcase className="w-5 h-5 shrink-0" />
-              <span className="flex-1 text-sm font-medium">Gestión</span>
+              <span className="flex-1 text-sm font-medium">Solicitudes</span>
               <ChevronDown className={cn('w-4 h-4 transition-transform', workOpen && 'rotate-180')} />
             </CollapsibleTrigger>
             <CollapsibleContent className="pl-4 space-y-1 mt-1">
