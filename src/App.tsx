@@ -79,6 +79,10 @@ const App = () => (
               <Route path="/admin/workflows/:id" element={<WorkflowEditor />} />
               <Route path="/admin/roles" element={<RolesList />} />
               <Route path="/change-password" element={<ChangePassword />} />
+
+              {/* Audit */}
+              <Route path="/audit/masters" element={<AuditMasters />} />
+              <Route path="/audit/reports" element={<AuditReports />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
