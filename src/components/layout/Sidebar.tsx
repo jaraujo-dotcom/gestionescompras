@@ -61,11 +61,26 @@ export function Sidebar() {
     icon: UserCog
   }];
 
+  const auditNav = [
+    {
+      name: 'Auditar Maestros',
+      href: '/audit/masters',
+      icon: SearchCheck
+    },
+    {
+      name: 'Reportes de Auditoría',
+      href: '/audit/reports',
+      icon: FileBarChart
+    }
+  ];
+
   const filteredWorkNav = workNav.filter(item => item.show);
   const isWorkRouteActive = workNav.some(item => location.pathname === item.href || location.pathname.startsWith(item.href + '/'));
   const isAdminRouteActive = adminNav.some(item => location.pathname === item.href);
+  const isAuditRouteActive = auditNav.some(item => location.pathname === item.href);
   const [workOpen, setWorkOpen] = useState(isWorkRouteActive);
   const [adminOpen, setAdminOpen] = useState(isAdminRouteActive);
+  const [auditOpen, setAuditOpen] = useState(isAuditRouteActive);
 
   return <div className={cn('flex flex-col h-full bg-sidebar text-sidebar-foreground transition-all duration-300', collapsed ? 'w-16' : 'w-64')}>
     {/* Header */}
