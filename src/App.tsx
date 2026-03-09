@@ -31,6 +31,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ChangePassword from "./pages/ChangePassword";
 import GuestForm from "./pages/external/GuestForm";
+import AuditMasters from "./pages/audit/AuditMasters";
+import AuditReports from "./pages/audit/AuditReports";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +81,10 @@ const App = () => (
               <Route path="/admin/workflows/:id" element={<WorkflowEditor />} />
               <Route path="/admin/roles" element={<RolesList />} />
               <Route path="/change-password" element={<ChangePassword />} />
+
+              {/* Audit */}
+              <Route path="/audit/masters" element={<AuditMasters />} />
+              <Route path="/audit/reports" element={<AuditReports />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
