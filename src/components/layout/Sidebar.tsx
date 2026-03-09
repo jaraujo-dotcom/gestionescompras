@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, ClipboardCheck, Settings, Users, LayoutDashboard, PlayCircle, LogOut, ChevronLeft, ChevronRight, ChevronDown, ShieldCheck, Users2, KeyRound, GitFork, UserCog } from 'lucide-react';
+import { FileText, ClipboardCheck, Settings, Users, LayoutDashboard, PlayCircle, LogOut, ChevronLeft, ChevronRight, ChevronDown, ShieldCheck, Users2, KeyRound, GitFork, UserCog, Briefcase } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -18,27 +18,26 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const isAdmin = hasRole('administrador');
 
-  const mainNav = [{
-    name: 'Dashboard',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-    show: true
-  }, {
-    name: 'Mis Solicitudes',
-    href: '/requests',
-    icon: FileText,
-    show: hasRole('solicitante') || isAdmin
-  }, {
-    name: 'Aprobación',
-    href: '/review',
-    icon: ClipboardCheck,
-    show: hasRole('gerencia') || hasRole('procesos') || hasRole('integridad_datos') || isAdmin
-  }, {
-    name: 'Ejecución',
-    href: '/execution',
-    icon: PlayCircle,
-    show: hasRole('ejecutor') || isAdmin
-  }];
+  const workNav = [
+    {
+      name: 'Mis Solicitudes',
+      href: '/requests',
+      icon: FileText,
+      show: hasRole('solicitante') || isAdmin
+    },
+    {
+      name: 'Aprobación',
+      href: '/review',
+      icon: ClipboardCheck,
+      show: hasRole('gerencia') || hasRole('procesos') || hasRole('integridad_datos') || isAdmin
+    },
+    {
+      name: 'Ejecución',
+      href: '/execution',
+      icon: PlayCircle,
+      show: hasRole('ejecutor') || isAdmin
+    }
+  ];
 
   const adminNav = [{
     name: 'Usuarios',
@@ -62,9 +61,11 @@ export function Sidebar() {
     icon: UserCog
   }];
 
-  const filteredMainNav = mainNav.filter(item => item.show);
+  const filteredWorkNav = workNav.filter(item => item.show);
+  const isWorkRouteActive = workNav.some(item => location.pathname === item.href || location.pathname.startsWith(item.href + '/'));
   const isAdminRouteActive = adminNav.some(item => location.pathname === item.href);
-  const [adminOpen, setAdminOpen] = useState(false);
+  const [workOpen, setWorkOpen] = useState(isWorkRouteActive);
+  const [adminOpen, setAdminOpen] = useState(isAdminRouteActive);
 
   return <div className={cn('flex flex-col h-full bg-sidebar text-sidebar-foreground transition-all duration-300', collapsed ? 'w-16' : 'w-64')}>
     {/* Header */}
@@ -80,13 +81,40 @@ export function Sidebar() {
 
     {/* Navigation */}
     <nav className="flex-1 p-2 space-y-1">
-      {filteredMainNav.map(item => {
-        const isActive = location.pathname === item.href;
-        return <Link key={item.name} to={item.href} className={cn('flex items-center gap-3 px-3 py-2 rounded-lg transition-colors', isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent text-sidebar-foreground')}>
-          <item.icon className="w-5 h-5 shrink-0" />
-          {!collapsed && <span>{item.name}</span>}
-        </Link>;
-      })}
+      {/* Dashboard */}
+      <Link to="/dashboard" className={cn('flex items-center gap-3 px-3 py-2 rounded-lg transition-colors', location.pathname === '/dashboard' ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent text-sidebar-foreground')}>
+        <LayoutDashboard className="w-5 h-5 shrink-0" />
+        {!collapsed && <span>Dashboard</span>}
+      </Link>
+
+      {/* Work Group */}
+      {filteredWorkNav.length > 0 && (
+        collapsed ? (
+          filteredWorkNav.map(item => {
+            const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
+            return <Link key={item.name} to={item.href} className={cn('flex items-center gap-3 px-3 py-2 rounded-lg transition-colors', isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent text-sidebar-foreground')}>
+              <item.icon className="w-5 h-5 shrink-0" />
+            </Link>;
+          })
+        ) : (
+          <Collapsible open={workOpen} onOpenChange={setWorkOpen} className="mt-3">
+            <CollapsibleTrigger className="flex items-center gap-3 px-3 py-2 rounded-lg w-full text-left text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
+              <Briefcase className="w-5 h-5 shrink-0" />
+              <span className="flex-1 text-sm font-medium">Gestión</span>
+              <ChevronDown className={cn('w-4 h-4 transition-transform', workOpen && 'rotate-180')} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pl-4 space-y-1 mt-1">
+              {filteredWorkNav.map(item => {
+                const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
+                return <Link key={item.name} to={item.href} className={cn('flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm', isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent text-sidebar-foreground')}>
+                  <item.icon className="w-4 h-4 shrink-0" />
+                  <span>{item.name}</span>
+                </Link>;
+              })}
+            </CollapsibleContent>
+          </Collapsible>
+        )
+      )}
 
       {/* Admin Group */}
       {isAdmin && (
