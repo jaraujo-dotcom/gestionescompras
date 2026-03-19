@@ -113,7 +113,7 @@ export function RequestFilters({ filters, onChange, userGroupIds }: RequestFilte
       )}
 
       <Select value={filters.templateId} onValueChange={(v) => update({ templateId: v })}>
-        <SelectTrigger className="w-[160px] h-8 text-sm">
+        <SelectTrigger className="w-[140px] sm:w-[160px] h-8 text-sm">
           <SelectValue placeholder="Formulario" />
         </SelectTrigger>
         <SelectContent>

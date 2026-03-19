@@ -215,13 +215,13 @@ export default function Dashboard() {
       <div className="space-y-3">
         {requests.map((request) => (
           <Link key={request.id} to={`/requests/${request.id}`}
-            className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-            <div>
-              <p className="font-medium">
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+            <div className="min-w-0">
+              <p className="font-medium truncate">
                 <span className="text-xs font-mono text-muted-foreground mr-2">#{String((request as any).request_number).padStart(6, '0')}</span>
                 {request.title}
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground truncate">
                 {(request as any).form_templates?.name && (
                   <span className="mr-2">{(request as any).form_templates.name} ·</span>
                 )}

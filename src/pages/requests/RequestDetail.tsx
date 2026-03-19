@@ -604,9 +604,9 @@ export default function RequestDetail() {
       {canActExecution && (
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <p className="font-medium text-sm">Acciones de ejecución</p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {request.status === 'aprobada' && (
                   <Button size="sm" onClick={() => openExecutionDialog('start')}>
                     <PlayCircle className="w-4 h-4 mr-1" /> Iniciar Ejecución

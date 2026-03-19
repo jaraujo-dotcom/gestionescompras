@@ -124,54 +124,53 @@ export default function ReviewList() {
             return (
               <Card key={request.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-xs font-mono text-muted-foreground">
-                          #{String(request.request_number).padStart(6, '0')}
-                        </span>
-                        <h3 className="font-semibold">{request.title}</h3>
-                        <StatusBadge status={request.status as RequestStatus} />
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
-                        <span>Solicitante: {request.creator?.name || 'Desconocido'}</span>
-                        <span>•</span>
-                        <span>
-                          {new Date(request.created_at).toLocaleDateString('es-ES', {
-                            day: '2-digit', month: 'short', year: 'numeric',
-                          })}
-                        </span>
-                      </div>
-                      {/* Approval progress */}
-                      <div className="flex items-center gap-3">
-                        {summary.map(s => (
-                          <span
-                            key={s.role}
-                            className={cn(
-                              'inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full',
-                              s.status === 'aprobada' && 'bg-emerald-100 text-emerald-700',
-                              s.status === 'pendiente' && 'bg-muted text-muted-foreground',
-                              s.status === 'rechazada' && 'bg-red-100 text-red-700',
-                              s.status === 'devuelta' && 'bg-amber-100 text-amber-700',
-                            )}
-                          >
-                            {s.status === 'aprobada' ? (
-                              <CheckCircle className="w-3 h-3" />
-                            ) : (
-                              <Clock className="w-3 h-3" />
-                            )}
-                            {s.label}
-                          </span>
-                        ))}
-                      </div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <span className="text-xs font-mono text-muted-foreground">
+                        #{String(request.request_number).padStart(6, '0')}
+                      </span>
+                      <h3 className="font-semibold truncate">{request.title}</h3>
+                      <StatusBadge status={request.status as RequestStatus} />
                     </div>
-                    <Link to={`/review/${request.id}`}>
-                      <Button variant={canAct ? 'default' : 'outline'}>
-                        <Eye className="w-4 h-4 mr-2" />
-                        {canAct ? 'Aprobar' : 'Ver'}
-                      </Button>
-                    </Link>
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-2">
+                      <span>Solicitante: {request.creator?.name || 'Desconocido'}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span>
+                        {new Date(request.created_at).toLocaleDateString('es-ES', {
+                          day: '2-digit', month: 'short', year: 'numeric',
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {summary.map(s => (
+                        <span
+                          key={s.role}
+                          className={cn(
+                            'inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full',
+                            s.status === 'aprobada' && 'bg-emerald-100 text-emerald-700',
+                            s.status === 'pendiente' && 'bg-muted text-muted-foreground',
+                            s.status === 'rechazada' && 'bg-red-100 text-red-700',
+                            s.status === 'devuelta' && 'bg-amber-100 text-amber-700',
+                          )}
+                        >
+                          {s.status === 'aprobada' ? (
+                            <CheckCircle className="w-3 h-3" />
+                          ) : (
+                            <Clock className="w-3 h-3" />
+                          )}
+                          {s.label}
+                        </span>
+                      ))}
+                    </div>
                   </div>
+                  <Link to={`/review/${request.id}`} className="shrink-0">
+                    <Button variant={canAct ? 'default' : 'outline'} size="sm">
+                      <Eye className="w-4 h-4 mr-1" />
+                      {canAct ? 'Aprobar' : 'Ver'}
+                    </Button>
+                  </Link>
+                </div>
                 </CardContent>
               </Card>
             );

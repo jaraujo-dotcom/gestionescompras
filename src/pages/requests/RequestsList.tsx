@@ -125,14 +125,14 @@ export default function RequestsList() {
           {requests.map((request) => (
             <Card key={request.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
                       <span className="text-xs font-mono text-muted-foreground">#{String(request.request_number).padStart(6, '0')}</span>
-                      <h3 className="font-semibold">{request.title}</h3>
+                      <h3 className="font-semibold truncate">{request.title}</h3>
                       <StatusBadge status={request.status as RequestStatus} />
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground truncate">
                       {(request as any).form_templates?.name && (
                         <span className="font-medium text-foreground/70 mr-2">{(request as any).form_templates.name} ·</span>
                       )}
@@ -140,13 +140,13 @@ export default function RequestsList() {
                         <span className="inline-flex items-center gap-1 mr-2"><Users2 className="w-3 h-3" />{(request as any).groups.name} ·</span>
                       )}
                       Creada: {new Date(request.created_at).toLocaleDateString('es-ES', {
-                        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+                        day: '2-digit', month: 'short', year: 'numeric',
                       })}
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 shrink-0">
                     <Link to={`/requests/${request.id}`}>
-                      <Button variant="outline" size="sm"><Eye className="w-4 h-4 mr-2" /> Ver</Button>
+                      <Button variant="outline" size="sm"><Eye className="w-4 h-4 mr-1" /> Ver</Button>
                     </Link>
                     {(request.status === 'borrador' || request.status === 'devuelta') && (
                       <Link to={`/requests/${request.id}/edit`}>

@@ -368,15 +368,15 @@ export default function NewRequest() {
         </Card>
       )}
 
-      <div className="flex justify-end gap-3">
-        <Button variant="outline" onClick={() => navigate('/requests')} disabled={saving}>
+      <div className="flex flex-col sm:flex-row justify-end gap-3">
+        <Button variant="outline" onClick={() => navigate('/requests')} disabled={saving} className="w-full sm:w-auto">
           Cancelar
         </Button>
-        <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving || !selectedTemplate}>
+        <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving || !selectedTemplate} className="w-full sm:w-auto">
           {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
           Guardar Borrador
         </Button>
-        <Button onClick={() => handleSave(true)} disabled={saving || !selectedTemplate}>
+        <Button onClick={() => handleSave(true)} disabled={saving || !selectedTemplate} className="w-full sm:w-auto">
           {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
           {selectedTemplate?.default_workflow_id ? 'Enviar a Revisión' : 'Enviar'}
         </Button>
