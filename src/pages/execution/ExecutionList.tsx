@@ -65,10 +65,10 @@ export default function ExecutionList() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Bandeja de Ejecución</h1>
-        <p className="text-muted-foreground">Solicitudes aprobadas y en proceso</p>
+        <h1 className="text-xl md:text-2xl font-bold">Bandeja de Ejecución</h1>
+        <p className="text-muted-foreground text-sm">Solicitudes aprobadas y en proceso</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'aprobada' | 'en_ejecucion' | 'en_espera')}>
@@ -100,28 +100,26 @@ export default function ExecutionList() {
               {filteredRequests.map((request) => (
                 <Card key={request.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
                           <span className="text-xs font-mono text-muted-foreground">#{String((request as any).request_number).padStart(6, '0')}</span>
-                          <h3 className="font-semibold">{request.title}</h3>
+                          <h3 className="font-semibold truncate">{request.title}</h3>
                           <StatusBadge status={request.status as RequestStatus} />
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                           <span>Solicitante: {request.creator?.name || 'Desconocido'}</span>
-                          <span>•</span>
+                          <span className="hidden sm:inline">•</span>
                           <span>
                             {new Date(request.updated_at).toLocaleDateString('es-ES', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
+                              day: '2-digit', month: 'short', year: 'numeric',
                             })}
                           </span>
                         </div>
                       </div>
-                      <Link to={`/execution/${request.id}`}>
-                        <Button>
-                          <Eye className="w-4 h-4 mr-2" />
+                      <Link to={`/execution/${request.id}`} className="shrink-0">
+                        <Button size="sm">
+                          <Eye className="w-4 h-4 mr-1" />
                           {activeTab === 'aprobada' ? 'Ejecutar' : 'Ver'}
                         </Button>
                       </Link>

@@ -107,15 +107,15 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Bienvenido, {profile?.name}</h1>
-          <p className="text-muted-foreground">Panel de control del sistema de solicitudes</p>
+          <h1 className="text-xl md:text-2xl font-bold">Bienvenido, {profile?.name}</h1>
+          <p className="text-muted-foreground text-sm">Panel de control del sistema de solicitudes</p>
         </div>
         {(hasRole('solicitante') || hasRole('administrador')) && (
           <Link to="/requests/new">
-            <Button><Plus className="w-4 h-4 mr-2" /> Nueva Solicitud</Button>
+            <Button size="sm"><Plus className="w-4 h-4 mr-2" /> Nueva Solicitud</Button>
           </Link>
         )}
       </div>
@@ -215,13 +215,13 @@ export default function Dashboard() {
       <div className="space-y-3">
         {requests.map((request) => (
           <Link key={request.id} to={`/requests/${request.id}`}
-            className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-            <div>
-              <p className="font-medium">
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+            <div className="min-w-0">
+              <p className="font-medium truncate">
                 <span className="text-xs font-mono text-muted-foreground mr-2">#{String((request as any).request_number).padStart(6, '0')}</span>
                 {request.title}
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground truncate">
                 {(request as any).form_templates?.name && (
                   <span className="mr-2">{(request as any).form_templates.name} ·</span>
                 )}

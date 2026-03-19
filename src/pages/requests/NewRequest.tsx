@@ -213,14 +213,14 @@ export default function NewRequest() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate('/requests')}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">Nueva Solicitud</h1>
-          <p className="text-muted-foreground">Seleccione el tipo y complete los datos</p>
+          <h1 className="text-xl md:text-2xl font-bold">Nueva Solicitud</h1>
+          <p className="text-muted-foreground text-sm">Seleccione el tipo y complete los datos</p>
         </div>
       </div>
 
@@ -229,7 +229,7 @@ export default function NewRequest() {
           <CardTitle>Información General</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="template">Tipo de Solicitud *</Label>
               <Select
@@ -368,15 +368,15 @@ export default function NewRequest() {
         </Card>
       )}
 
-      <div className="flex justify-end gap-3">
-        <Button variant="outline" onClick={() => navigate('/requests')} disabled={saving}>
+      <div className="flex flex-col sm:flex-row justify-end gap-3">
+        <Button variant="outline" onClick={() => navigate('/requests')} disabled={saving} className="w-full sm:w-auto">
           Cancelar
         </Button>
-        <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving || !selectedTemplate}>
+        <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving || !selectedTemplate} className="w-full sm:w-auto">
           {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
           Guardar Borrador
         </Button>
-        <Button onClick={() => handleSave(true)} disabled={saving || !selectedTemplate}>
+        <Button onClick={() => handleSave(true)} disabled={saving || !selectedTemplate} className="w-full sm:w-auto">
           {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
           {selectedTemplate?.default_workflow_id ? 'Enviar a Revisión' : 'Enviar'}
         </Button>

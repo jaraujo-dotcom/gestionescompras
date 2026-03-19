@@ -85,9 +85,9 @@ export function RequestFilters({ filters, onChange, userGroupIds }: RequestFilte
     : groups;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2 overflow-x-auto">
       <Select value={filters.status} onValueChange={(v) => update({ status: v })}>
-        <SelectTrigger className="w-[160px] h-8 text-sm">
+        <SelectTrigger className="w-[140px] sm:w-[160px] h-8 text-sm">
           <SelectValue placeholder="Estado" />
         </SelectTrigger>
         <SelectContent>
@@ -100,7 +100,7 @@ export function RequestFilters({ filters, onChange, userGroupIds }: RequestFilte
 
       {displayGroups.length > 0 && (
         <Select value={filters.groupId} onValueChange={(v) => update({ groupId: v })}>
-          <SelectTrigger className="w-[160px] h-8 text-sm">
+          <SelectTrigger className="w-[140px] sm:w-[160px] h-8 text-sm">
             <SelectValue placeholder="Grupo" />
           </SelectTrigger>
           <SelectContent>
@@ -113,7 +113,7 @@ export function RequestFilters({ filters, onChange, userGroupIds }: RequestFilte
       )}
 
       <Select value={filters.templateId} onValueChange={(v) => update({ templateId: v })}>
-        <SelectTrigger className="w-[160px] h-8 text-sm">
+        <SelectTrigger className="w-[140px] sm:w-[160px] h-8 text-sm">
           <SelectValue placeholder="Formulario" />
         </SelectTrigger>
         <SelectContent>
