@@ -79,10 +79,11 @@ export default function TemplateEditor() {
 
   const fetchTemplate = async () => {
     try {
-      const [templateRes, fieldsRes, sectionsRes] = await Promise.all([
+      const [templateRes, fieldsRes, sectionsRes, linkedGroupsRes] = await Promise.all([
         supabase.from('form_templates').select('*').eq('id', id).single(),
         supabase.from('form_fields').select('*').eq('template_id', id).order('field_order'),
         supabase.from('form_sections').select('*').eq('template_id', id).order('section_order'),
+        supabase.from('form_template_groups').select('group_id').eq('template_id', id),
       ]);
 
       if (templateRes.error) throw templateRes.error;
