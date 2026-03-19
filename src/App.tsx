@@ -36,6 +36,7 @@ import AuditReports from "./pages/audit/AuditReports";
 
 const queryClient = new QueryClient();
 
+// App root component
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
