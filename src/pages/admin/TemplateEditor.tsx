@@ -43,6 +43,7 @@ export default function TemplateEditor() {
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>('none');
   const [allGroups, setAllGroups] = useState<{ id: string; name: string }[]>([]);
   const [selectedExecutorGroupId, setSelectedExecutorGroupId] = useState<string>('none');
+  const [linkedGroupIds, setLinkedGroupIds] = useState<string[]>([]);
 
   const isNew = !id || id === 'new';
 
