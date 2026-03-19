@@ -125,26 +125,26 @@ export default function RequestsList() {
           {requests.map((request) => (
             <Card key={request.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                <div className="flex flex-col gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
                       <span className="text-xs font-mono text-muted-foreground">#{String(request.request_number).padStart(6, '0')}</span>
-                      <h3 className="font-semibold truncate">{request.title}</h3>
-                      <StatusBadge status={request.status as RequestStatus} />
+                      <h3 className="font-semibold break-words">{request.title}</h3>
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">
+                    <StatusBadge status={request.status as RequestStatus} />
+                    <p className="text-sm text-muted-foreground mt-2 break-words">
                       {(request as any).form_templates?.name && (
-                        <span className="font-medium text-foreground/70 mr-2">{(request as any).form_templates.name} ·</span>
+                        <span className="font-medium text-foreground/70 mr-1">{(request as any).form_templates.name} ·</span>
                       )}
                       {(request as any).groups?.name && (
-                        <span className="inline-flex items-center gap-1 mr-2"><Users2 className="w-3 h-3" />{(request as any).groups.name} ·</span>
+                        <span className="inline-flex items-center gap-1 mr-1"><Users2 className="w-3 h-3" />{(request as any).groups.name} ·</span>
                       )}
                       Creada: {new Date(request.created_at).toLocaleDateString('es-ES', {
                         day: '2-digit', month: 'short', year: 'numeric',
                       })}
                     </p>
                   </div>
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex gap-2">
                     <Link to={`/requests/${request.id}`}>
                       <Button variant="outline" size="sm"><Eye className="w-4 h-4 mr-1" /> Ver</Button>
                     </Link>
