@@ -136,7 +136,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         )}
-        {userGroupIds.length > 0 && (
+        {!isSolicitanteOnly && userGroupIds.length > 0 && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Del Grupo</CardTitle>
