@@ -504,43 +504,50 @@ export default function TemplateEditor() {
                   Solo los usuarios de estos grupos verán este formulario. Sin selección = disponible para todos.
                 </p>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {allGroups.map((g) => {
-                  const isLinked = linkedGroupIds.includes(g.id);
-                  return (
-                    <label
-                      key={g.id}
-                      className={`flex items-center gap-2.5 px-3 py-2 rounded-md border cursor-pointer transition-colors ${
-                        isLinked
-                          ? 'border-primary bg-primary/5 text-foreground'
-                          : 'border-border bg-background text-muted-foreground hover:border-muted-foreground/40'
-                      }`}
-                      onClick={() => {
-                        setLinkedGroupIds(
-                          isLinked
-                            ? linkedGroupIds.filter((id) => id !== g.id)
-                            : [...linkedGroupIds, g.id]
-                        );
-                      }}
-                    >
-                      <div className={`flex items-center justify-center w-4 h-4 rounded border transition-colors ${
-                        isLinked ? 'bg-primary border-primary' : 'border-muted-foreground/40'
-                      }`}>
-                        {isLinked && (
-                          <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                      <span className="text-sm font-medium truncate">{g.name}</span>
-                    </label>
-                  );
-                })}
-              </div>
+              <Select
+                value=""
+                onValueChange={(groupId) => {
+                  if (!linkedGroupIds.includes(groupId)) {
+                    setLinkedGroupIds([...linkedGroupIds, groupId]);
+                  }
+                }}
+              >
+                <SelectTrigger className="w-[300px]">
+                  <SelectValue placeholder="Seleccionar grupo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allGroups
+                    .filter((g) => !linkedGroupIds.includes(g.id))
+                    .map((g) => (
+                      <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                    ))}
+                  {allGroups.filter((g) => !linkedGroupIds.includes(g.id)).length === 0 && (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">Todos los grupos ya están vinculados</div>
+                  )}
+                </SelectContent>
+              </Select>
               {linkedGroupIds.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {linkedGroupIds.length} grupo{linkedGroupIds.length !== 1 ? 's' : ''} seleccionado{linkedGroupIds.length !== 1 ? 's' : ''}
-                </p>
+                <div className="flex flex-wrap gap-2">
+                  {linkedGroupIds.map((gid) => {
+                    const group = allGroups.find((g) => g.id === gid);
+                    if (!group) return null;
+                    return (
+                      <span
+                        key={gid}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-sm font-medium border border-primary/20"
+                      >
+                        {group.name}
+                        <button
+                          type="button"
+                          onClick={() => setLinkedGroupIds(linkedGroupIds.filter((id) => id !== gid))}
+                          className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}
