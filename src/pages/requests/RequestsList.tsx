@@ -48,32 +48,12 @@ export default function RequestsList() {
     setLoading(true);
 
     try {
-      let ownQuery = supabase.from('requests').select('*, form_templates(name), groups(name)')
+      let query = supabase.from('requests').select('*, form_templates(name), groups(name)')
         .eq('created_by', user.id).order('created_at', { ascending: false });
-      ownQuery = applyFilters(ownQuery);
-      const { data: ownData, error: ownError } = await ownQuery;
-      if (ownError) throw ownError;
-
-      const { data: groupIds } = await supabase.from('user_groups').select('group_id').eq('user_id', user.id);
-
-      let groupData: Request[] = [];
-      if (groupIds && groupIds.length > 0) {
-        const gIds = groupIds.map((g) => g.group_id);
-        let grpQuery = supabase.from('requests').select('*, form_templates(name), groups(name)')
-          .in('group_id', gIds).order('created_at', { ascending: false });
-        grpQuery = applyFilters(grpQuery);
-        const { data, error } = await grpQuery;
-        if (error) throw error;
-        groupData = (data || []) as Request[];
-      }
-
-      const allMap = new Map<string, Request>();
-      for (const r of (ownData || []) as Request[]) allMap.set(r.id, r);
-      for (const r of groupData) allMap.set(r.id, r);
-      const all = Array.from(allMap.values()).sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-      setRequests(all);
+      query = applyFilters(query);
+      const { data, error } = await query;
+      if (error) throw error;
+      setRequests((data || []) as Request[]);
     } catch (error) {
       console.error('Error fetching requests:', error);
     } finally {
@@ -94,14 +74,14 @@ export default function RequestsList() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold">Solicitudes</h1>
-          <p className="text-muted-foreground text-sm">Sus solicitudes y las de su grupo</p>
+          <p className="text-muted-foreground text-sm">Sus solicitudes</p>
         </div>
         <Link to="/requests/new">
           <Button size="sm"><Plus className="w-4 h-4 mr-2" /> Nueva Solicitud</Button>
         </Link>
       </div>
 
-      <RequestFilters filters={filters} onChange={setFilters} userGroupIds={userGroupIds} />
+      <RequestFilters filters={filters} onChange={setFilters} userGroupIds={userGroupIds} hideGroupFilter />
 
       {requests.length === 0 ? (
         <Card>

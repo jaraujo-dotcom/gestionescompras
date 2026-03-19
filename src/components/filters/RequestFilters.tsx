@@ -47,6 +47,7 @@ interface RequestFiltersProps {
   filters: RequestFilterValues;
   onChange: (filters: RequestFilterValues) => void;
   userGroupIds?: string[];
+  hideGroupFilter?: boolean;
 }
 
 export const defaultFilters: RequestFilterValues = {
@@ -57,7 +58,7 @@ export const defaultFilters: RequestFilterValues = {
   templateId: 'all',
 };
 
-export function RequestFilters({ filters, onChange, userGroupIds }: RequestFiltersProps) {
+export function RequestFilters({ filters, onChange, userGroupIds, hideGroupFilter }: RequestFiltersProps) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
 
@@ -98,7 +99,7 @@ export function RequestFilters({ filters, onChange, userGroupIds }: RequestFilte
         </SelectContent>
       </Select>
 
-      {displayGroups.length > 0 && (
+      {!hideGroupFilter && displayGroups.length > 0 && (
         <Select value={filters.groupId} onValueChange={(v) => update({ groupId: v })}>
           <SelectTrigger className="w-[140px] sm:w-[160px] h-8 text-sm">
             <SelectValue placeholder="Grupo" />
