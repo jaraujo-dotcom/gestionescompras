@@ -43,6 +43,7 @@ export default function TemplateEditor() {
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>('none');
   const [allGroups, setAllGroups] = useState<{ id: string; name: string }[]>([]);
   const [selectedExecutorGroupId, setSelectedExecutorGroupId] = useState<string>('none');
+  const [linkedGroupIds, setLinkedGroupIds] = useState<string[]>([]);
 
   const isNew = !id || id === 'new';
 
@@ -78,10 +79,11 @@ export default function TemplateEditor() {
 
   const fetchTemplate = async () => {
     try {
-      const [templateRes, fieldsRes, sectionsRes] = await Promise.all([
+      const [templateRes, fieldsRes, sectionsRes, linkedGroupsRes] = await Promise.all([
         supabase.from('form_templates').select('*').eq('id', id).single(),
         supabase.from('form_fields').select('*').eq('template_id', id).order('field_order'),
         supabase.from('form_sections').select('*').eq('template_id', id).order('section_order'),
+        supabase.from('form_template_groups').select('group_id').eq('template_id', id),
       ]);
 
       if (templateRes.error) throw templateRes.error;
@@ -92,6 +94,7 @@ export default function TemplateEditor() {
       setIsActive(template.is_active);
       setSelectedWorkflowId(template.default_workflow_id || 'none');
       setSelectedExecutorGroupId(template.executor_group_id || 'none');
+      setLinkedGroupIds((linkedGroupsRes.data || []).map((d: any) => d.group_id));
 
       const mappedSections: SectionDraft[] = (sectionsRes.data || []).map((s) => ({
         id: s.id,
@@ -322,6 +325,17 @@ export default function TemplateEditor() {
         if (fieldsError) throw fieldsError;
       }
 
+      // Save linked groups
+      await supabase.from('form_template_groups').delete().eq('template_id', templateId);
+      if (linkedGroupIds.length > 0) {
+        const groupLinks = linkedGroupIds.map((gid) => ({
+          template_id: templateId,
+          group_id: gid,
+        }));
+        const { error: groupsError } = await supabase.from('form_template_groups').insert(groupLinks);
+        if (groupsError) throw groupsError;
+      }
+
       toast.success(isNew ? 'Plantilla creada' : 'Plantilla actualizada');
       navigate('/admin/templates');
     } catch (error) {
@@ -482,6 +496,34 @@ export default function TemplateEditor() {
               <p className="text-xs text-muted-foreground">Los ejecutores de este grupo podrán ver y gestionar las solicitudes de este tipo.</p>
             </div>
           </div>
+          {allGroups.length > 0 && (
+            <div className="space-y-2">
+              <Label>Grupos vinculados</Label>
+              <p className="text-xs text-muted-foreground">Solo los usuarios de estos grupos verán este formulario al crear una solicitud. Si no se selecciona ninguno, estará disponible para todos.</p>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {allGroups.map((g) => {
+                  const isLinked = linkedGroupIds.includes(g.id);
+                  return (
+                    <Button
+                      key={g.id}
+                      type="button"
+                      variant={isLinked ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        setLinkedGroupIds(
+                          isLinked
+                            ? linkedGroupIds.filter((id) => id !== g.id)
+                            : [...linkedGroupIds, g.id]
+                        );
+                      }}
+                    >
+                      {g.name}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

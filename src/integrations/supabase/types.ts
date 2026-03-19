@@ -177,6 +177,42 @@ export type Database = {
           },
         ]
       }
+      form_template_groups: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_template_groups_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_template_groups_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       form_templates: {
         Row: {
           created_at: string
