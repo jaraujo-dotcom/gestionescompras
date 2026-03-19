@@ -45,7 +45,7 @@ export default function Register() {
             <p className="text-muted-foreground mb-4">
               Hemos enviado un enlace de confirmación a <strong>{email}</strong>
             </p>
-            <Link to="/login">
+            <Link to="/">
               <Button variant="outline" className="w-full">
                 Volver al inicio de sesión
               </Button>
