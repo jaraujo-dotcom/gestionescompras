@@ -74,7 +74,7 @@ export default function RequestsList() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold">Solicitudes</h1>
-          <p className="text-muted-foreground text-sm">Sus solicitudes y las de su grupo</p>
+          <p className="text-muted-foreground text-sm">Sus solicitudes</p>
         </div>
         <Link to="/requests/new">
           <Button size="sm"><Plus className="w-4 h-4 mr-2" /> Nueva Solicitud</Button>
