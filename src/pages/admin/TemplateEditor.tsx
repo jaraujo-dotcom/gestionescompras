@@ -325,6 +325,17 @@ export default function TemplateEditor() {
         if (fieldsError) throw fieldsError;
       }
 
+      // Save linked groups
+      await supabase.from('form_template_groups').delete().eq('template_id', templateId);
+      if (linkedGroupIds.length > 0) {
+        const groupLinks = linkedGroupIds.map((gid) => ({
+          template_id: templateId,
+          group_id: gid,
+        }));
+        const { error: groupsError } = await supabase.from('form_template_groups').insert(groupLinks);
+        if (groupsError) throw groupsError;
+      }
+
       toast.success(isNew ? 'Plantilla creada' : 'Plantilla actualizada');
       navigate('/admin/templates');
     } catch (error) {
