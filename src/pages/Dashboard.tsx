@@ -189,7 +189,7 @@ export default function Dashboard() {
       <Card>
         <CardHeader className="space-y-3">
           <CardTitle>Solicitudes</CardTitle>
-          <RequestFilters filters={filters} onChange={setFilters} />
+          <RequestFilters filters={filters} onChange={setFilters} hideGroupFilter={isSolicitanteOnly} />
         </CardHeader>
         <CardContent>
           {userGroupIds.length > 0 ? (
