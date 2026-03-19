@@ -85,7 +85,7 @@ export function RequestFilters({ filters, onChange, userGroupIds }: RequestFilte
     : groups;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2 overflow-x-auto">
       <Select value={filters.status} onValueChange={(v) => update({ status: v })}>
         <SelectTrigger className="w-[160px] h-8 text-sm">
           <SelectValue placeholder="Estado" />
