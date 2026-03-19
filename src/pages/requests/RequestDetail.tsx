@@ -579,11 +579,11 @@ export default function RequestDetail() {
 
             {/* Review action buttons */}
             {canActReview && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-4 pt-4 border-t gap-3">
                 <p className="text-sm font-medium">
                   Acción requerida: <span className="text-primary">{myCurrentStep?.label}</span>
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={() => openReviewDialog('return')}>
                     <RotateCcw className="w-4 h-4 mr-1" /> Devolver
                   </Button>
