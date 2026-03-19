@@ -81,7 +81,7 @@ export default function RequestsList() {
         </Link>
       </div>
 
-      <RequestFilters filters={filters} onChange={setFilters} userGroupIds={userGroupIds} />
+      <RequestFilters filters={filters} onChange={setFilters} userGroupIds={userGroupIds} hideGroupFilter />
 
       {requests.length === 0 ? (
         <Card>
