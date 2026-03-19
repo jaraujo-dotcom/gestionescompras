@@ -82,7 +82,7 @@ export default function ForgotPassword() {
             </Button>
           </form>
           <div className="mt-4 text-center text-sm text-muted-foreground">
-            <Link to="/login" className="text-primary hover:underline">
+            <Link to="/" className="text-primary hover:underline">
               Volver al inicio de sesión
             </Link>
           </div>
