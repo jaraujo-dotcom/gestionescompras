@@ -107,15 +107,15 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Bienvenido, {profile?.name}</h1>
-          <p className="text-muted-foreground">Panel de control del sistema de solicitudes</p>
+          <h1 className="text-xl md:text-2xl font-bold">Bienvenido, {profile?.name}</h1>
+          <p className="text-muted-foreground text-sm">Panel de control del sistema de solicitudes</p>
         </div>
         {(hasRole('solicitante') || hasRole('administrador')) && (
           <Link to="/requests/new">
-            <Button><Plus className="w-4 h-4 mr-2" /> Nueva Solicitud</Button>
+            <Button size="sm"><Plus className="w-4 h-4 mr-2" /> Nueva Solicitud</Button>
           </Link>
         )}
       </div>
