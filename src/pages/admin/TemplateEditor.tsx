@@ -16,7 +16,7 @@ import { WorkflowTemplate } from '@/types/database';
 import { FormTemplate, FieldRule, TableColumnSchema } from '@/types/database';
 import { FieldDraft, SectionDraft } from '@/components/admin/FieldEditor';
 import { SortableFieldItem } from '@/components/admin/SortableFieldItem';
-import { ArrowLeft, Plus, Save, Loader2, FolderPlus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Plus, Save, Loader2, FolderPlus, Trash2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Json } from '@/integrations/supabase/types';
 import { normalizeRules } from '@/lib/rules';
