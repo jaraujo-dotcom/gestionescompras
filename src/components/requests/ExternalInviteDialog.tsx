@@ -57,7 +57,7 @@ export function ExternalInviteDialog({
         comment: `Enlace externo generado para ${guestName || 'invitado'}`,
       });
 
-      const link = `${window.location.origin}/external/${token}`;
+      const link = `https://gestiones-compras.vercel.app/external/${token}`;
       setGeneratedLink(link);
       toast.success('Enlace generado exitosamente');
       onInviteCreated?.();
