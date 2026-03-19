@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FormTemplate, FormField, FormSection, FieldDependency, TableColumnSchema } from '@/types/database';
 
+interface UseFormTemplateOptions {
+  /** When provided, only templates linked to at least one of these groups are returned */
+  userGroupIds?: string[];
+}
+
 interface UseFormTemplateResult {
   templates: FormTemplate[];
   selectedTemplate: FormTemplate | null;
@@ -13,13 +18,16 @@ interface UseFormTemplateResult {
   refreshTemplates: () => void;
 }
 
-export function useFormTemplate(): UseFormTemplateResult {
+export function useFormTemplate(options?: UseFormTemplateOptions): UseFormTemplateResult {
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
+  const [allTemplates, setAllTemplates] = useState<FormTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<FormTemplate | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
   const [sections, setSections] = useState<FormSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const userGroupIds = options?.userGroupIds;
 
   const fetchTemplates = async () => {
     try {
@@ -31,7 +39,8 @@ export function useFormTemplate(): UseFormTemplateResult {
         .order('name');
 
       if (fetchError) throw fetchError;
-      setTemplates(data as FormTemplate[]);
+      const all = (data || []) as FormTemplate[];
+      setAllTemplates(all);
     } catch (err) {
       console.error('Error fetching templates:', err);
       setError('Error al cargar plantillas');
@@ -39,6 +48,30 @@ export function useFormTemplate(): UseFormTemplateResult {
       setLoading(false);
     }
   };
+
+  // Filter templates by user groups when userGroupIds change
+  useEffect(() => {
+    if (!userGroupIds || userGroupIds.length === 0) {
+      setTemplates(allTemplates);
+      return;
+    }
+
+    const filterByGroups = async () => {
+      const { data } = await supabase
+        .from('form_template_groups')
+        .select('template_id')
+        .in('group_id', userGroupIds);
+
+      if (data && data.length > 0) {
+        const allowedIds = new Set(data.map((d: any) => d.template_id));
+        setTemplates(allTemplates.filter((t) => allowedIds.has(t.id)));
+      } else {
+        // No links exist yet – show all templates (backward compatible)
+        setTemplates(allTemplates);
+      }
+    };
+    filterByGroups();
+  }, [allTemplates, userGroupIds?.join(',')]);
 
   const fetchFields = async (templateId: string) => {
     try {
