@@ -442,31 +442,31 @@ export default function RequestDetail() {
   const isCommentRequired = dialogType === 'review' && (reviewAction === 'return' || reviewAction === 'reject');
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto">
       {/* ─── Header ─── */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0 mt-1">
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <div>
-            <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium text-sm font-mono text-muted-foreground">#{formatRequestNumber(request.request_number)}</span>
-              <h1 className="text-2xl font-bold">{request.title}</h1>
+              <h1 className="text-xl md:text-2xl font-bold">{request.title}</h1>
               {hasRole('administrador') && user ? (
                 <AdminStatusChanger requestId={request.id} currentStatus={request.status as RequestStatus} userId={user.id} onStatusChanged={fetchRequestData} />
               ) : (
                 <StatusBadge status={request.status as RequestStatus} />
               )}
             </div>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-sm mt-1">
               {template?.name && <span className="mr-2">• {template.name}</span>}
               {groupName && <span className="mr-2 inline-flex items-center gap-1">• <Users2 className="w-3 h-3" /> {groupName}</span>}
-              Solicitante: {creator?.name || 'Desconocido'} • Creada: {new Date(request.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}
+              <span className="block sm:inline">Solicitante: {creator?.name || 'Desconocido'} • Creada: {new Date(request.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
             </p>
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap justify-end">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={handleExport}>
             <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel
           </Button>
@@ -478,17 +478,17 @@ export default function RequestDetail() {
           {canEdit && (
             <>
               <Link to={`/requests/${request.id}/edit`}>
-                <Button variant="outline"><Edit className="w-4 h-4 mr-2" /> Editar</Button>
+                <Button variant="outline" size="sm"><Edit className="w-4 h-4 mr-1" /> Editar</Button>
               </Link>
               {request.status === 'devuelta' && (
-                <Button onClick={handleSubmitForReview}><Send className="w-4 h-4 mr-2" /> Reenviar</Button>
+                <Button size="sm" onClick={handleSubmitForReview}><Send className="w-4 h-4 mr-1" /> Reenviar</Button>
               )}
             </>
           )}
           {canDelete && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive"><Trash2 className="w-4 h-4 mr-2" /> Eliminar</Button>
+                <Button variant="destructive" size="sm"><Trash2 className="w-4 h-4 mr-1" /> Eliminar</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
@@ -505,8 +505,8 @@ export default function RequestDetail() {
           {canAnnul && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" className="text-destructive border-destructive/50 hover:bg-destructive/10">
-                  <Ban className="w-4 h-4 mr-2" /> Anular
+                <Button variant="outline" size="sm" className="text-destructive border-destructive/50 hover:bg-destructive/10">
+                  <Ban className="w-4 h-4 mr-1" /> Anular
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
