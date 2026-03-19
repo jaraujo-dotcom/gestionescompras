@@ -21,7 +21,7 @@ interface DashboardStats {
 }
 
 export default function Dashboard() {
-  const { profile, hasRole, user } = useAuth();
+  const { profile, hasRole, hasAnyRole, user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     myRequests: 0, pendingReview: 0, pendingExecution: 0, inExecution: 0, groupRequests: 0,
   });
@@ -31,6 +31,9 @@ export default function Dashboard() {
   const [filters, setFilters] = useState<RequestFilterValues>(defaultFilters);
   const [userGroupIds, setUserGroupIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('all');
+
+  // A user is "solicitante only" if they have solicitante but no other roles that grant group visibility
+  const isSolicitanteOnly = hasRole('solicitante') && !hasAnyRole(['gerencia', 'administrador', 'procesos', 'integridad_datos', 'ejecutor', 'revisor']);
 
   useEffect(() => {
     if (user) fetchUserGroups();
@@ -68,7 +71,7 @@ export default function Dashboard() {
       const { data: requests } = await query;
 
       let grpReqs: Request[] = [];
-      if (userGroupIds.length > 0) {
+      if (!isSolicitanteOnly && userGroupIds.length > 0) {
         let grpQuery = supabase.from('requests').select('*, form_templates(name), groups(name)')
           .in('group_id', userGroupIds).order('created_at', { ascending: false }).limit(50);
         grpQuery = applyFilters(grpQuery);
@@ -97,7 +100,6 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
