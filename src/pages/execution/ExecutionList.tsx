@@ -65,10 +65,10 @@ export default function ExecutionList() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Bandeja de Ejecución</h1>
-        <p className="text-muted-foreground">Solicitudes aprobadas y en proceso</p>
+        <h1 className="text-xl md:text-2xl font-bold">Bandeja de Ejecución</h1>
+        <p className="text-muted-foreground text-sm">Solicitudes aprobadas y en proceso</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'aprobada' | 'en_ejecucion' | 'en_espera')}>
