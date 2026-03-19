@@ -58,7 +58,7 @@ export const defaultFilters: RequestFilterValues = {
   templateId: 'all',
 };
 
-export function RequestFilters({ filters, onChange, userGroupIds }: RequestFiltersProps) {
+export function RequestFilters({ filters, onChange, userGroupIds, hideGroupFilter }: RequestFiltersProps) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
 
