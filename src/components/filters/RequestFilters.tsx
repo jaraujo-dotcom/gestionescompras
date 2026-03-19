@@ -47,6 +47,7 @@ interface RequestFiltersProps {
   filters: RequestFilterValues;
   onChange: (filters: RequestFilterValues) => void;
   userGroupIds?: string[];
+  hideGroupFilter?: boolean;
 }
 
 export const defaultFilters: RequestFilterValues = {
