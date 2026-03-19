@@ -44,7 +44,7 @@ export default function ForgotPassword() {
             <p className="text-muted-foreground mb-4">
               Si existe una cuenta con <strong>{email}</strong>, recibirá un enlace para restablecer su contraseña.
             </p>
-            <Link to="/login">
+            <Link to="/">
               <Button variant="outline" className="w-full">
                 Volver al inicio de sesión
               </Button>
@@ -82,7 +82,7 @@ export default function ForgotPassword() {
             </Button>
           </form>
           <div className="mt-4 text-center text-sm text-muted-foreground">
-            <Link to="/login" className="text-primary hover:underline">
+            <Link to="/" className="text-primary hover:underline">
               Volver al inicio de sesión
             </Link>
           </div>
