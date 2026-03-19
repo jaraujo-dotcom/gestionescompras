@@ -24,7 +24,7 @@ export default function NewRequest() {
   const [title, setTitle] = useState('');
   const [formValues, setFormValues] = useState<Record<string, unknown>>({});
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [userGroups, setUserGroups] = useState<{ id: string; name: string }[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
   // Fetch user groups
