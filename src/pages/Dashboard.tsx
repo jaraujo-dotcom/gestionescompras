@@ -192,7 +192,7 @@ export default function Dashboard() {
           <RequestFilters filters={filters} onChange={setFilters} hideGroupFilter={isSolicitanteOnly} />
         </CardHeader>
         <CardContent>
-          {userGroupIds.length > 0 ? (
+          {!isSolicitanteOnly && userGroupIds.length > 0 ? (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-3">
                 <TabsTrigger value="all">Todas</TabsTrigger>
