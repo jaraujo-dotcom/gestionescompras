@@ -94,6 +94,7 @@ export default function TemplateEditor() {
       setIsActive(template.is_active);
       setSelectedWorkflowId(template.default_workflow_id || 'none');
       setSelectedExecutorGroupId(template.executor_group_id || 'none');
+      setLinkedGroupIds((linkedGroupsRes.data || []).map((d: any) => d.group_id));
 
       const mappedSections: SectionDraft[] = (sectionsRes.data || []).map((s) => ({
         id: s.id,
