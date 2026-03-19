@@ -213,14 +213,14 @@ export default function NewRequest() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate('/requests')}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">Nueva Solicitud</h1>
-          <p className="text-muted-foreground">Seleccione el tipo y complete los datos</p>
+          <h1 className="text-xl md:text-2xl font-bold">Nueva Solicitud</h1>
+          <p className="text-muted-foreground text-sm">Seleccione el tipo y complete los datos</p>
         </div>
       </div>
 
