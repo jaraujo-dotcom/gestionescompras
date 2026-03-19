@@ -99,10 +99,10 @@ export default function ReviewList() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Bandeja de Aprobación</h1>
-        <p className="text-muted-foreground">Solicitudes pendientes de aprobación</p>
+        <h1 className="text-xl md:text-2xl font-bold">Bandeja de Aprobación</h1>
+        <p className="text-muted-foreground text-sm">Solicitudes pendientes de aprobación</p>
       </div>
 
       {requests.length === 0 ? (
