@@ -496,6 +496,34 @@ export default function TemplateEditor() {
               <p className="text-xs text-muted-foreground">Los ejecutores de este grupo podrán ver y gestionar las solicitudes de este tipo.</p>
             </div>
           </div>
+          {allGroups.length > 0 && (
+            <div className="space-y-2">
+              <Label>Grupos vinculados</Label>
+              <p className="text-xs text-muted-foreground">Solo los usuarios de estos grupos verán este formulario al crear una solicitud. Si no se selecciona ninguno, estará disponible para todos.</p>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {allGroups.map((g) => {
+                  const isLinked = linkedGroupIds.includes(g.id);
+                  return (
+                    <Button
+                      key={g.id}
+                      type="button"
+                      variant={isLinked ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        setLinkedGroupIds(
+                          isLinked
+                            ? linkedGroupIds.filter((id) => id !== g.id)
+                            : [...linkedGroupIds, g.id]
+                        );
+                      }}
+                    >
+                      {g.name}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
