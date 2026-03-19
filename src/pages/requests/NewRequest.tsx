@@ -17,7 +17,9 @@ import { downloadFormTemplate, parseExcelFormData } from '@/lib/excelFormTemplat
 export default function NewRequest() {
   const { user, hasRole, profile } = useAuth();
   const navigate = useNavigate();
-  const { templates, selectedTemplate, fields, sections, loading: templatesLoading, selectTemplate } = useFormTemplate();
+  const [userGroups, setUserGroups] = useState<{ id: string; name: string }[]>([]);
+  const userGroupIds = userGroups.map(g => g.id);
+  const { templates, selectedTemplate, fields, sections, loading: templatesLoading, selectTemplate } = useFormTemplate({ userGroupIds });
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState('');
   const [formValues, setFormValues] = useState<Record<string, unknown>>({});
