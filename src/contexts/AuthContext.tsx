@@ -110,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
       options: {
         data: { name },
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: 'https://gestiones-compras.vercel.app',
       },
     });
     if (error) throw error;
