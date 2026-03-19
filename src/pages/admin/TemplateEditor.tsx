@@ -497,18 +497,24 @@ export default function TemplateEditor() {
             </div>
           </div>
           {allGroups.length > 0 && (
-            <div className="space-y-2">
-              <Label>Grupos vinculados</Label>
-              <p className="text-xs text-muted-foreground">Solo los usuarios de estos grupos verán este formulario al crear una solicitud. Si no se selecciona ninguno, estará disponible para todos.</p>
-              <div className="flex flex-wrap gap-2 mt-1">
+            <div className="space-y-3 pt-2 border-t">
+              <div>
+                <Label>Grupos vinculados</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Solo los usuarios de estos grupos verán este formulario. Sin selección = disponible para todos.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {allGroups.map((g) => {
                   const isLinked = linkedGroupIds.includes(g.id);
                   return (
-                    <Button
+                    <label
                       key={g.id}
-                      type="button"
-                      variant={isLinked ? 'default' : 'outline'}
-                      size="sm"
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-md border cursor-pointer transition-colors ${
+                        isLinked
+                          ? 'border-primary bg-primary/5 text-foreground'
+                          : 'border-border bg-background text-muted-foreground hover:border-muted-foreground/40'
+                      }`}
                       onClick={() => {
                         setLinkedGroupIds(
                           isLinked
@@ -517,11 +523,25 @@ export default function TemplateEditor() {
                         );
                       }}
                     >
-                      {g.name}
-                    </Button>
+                      <div className={`flex items-center justify-center w-4 h-4 rounded border transition-colors ${
+                        isLinked ? 'bg-primary border-primary' : 'border-muted-foreground/40'
+                      }`}>
+                        {isLinked && (
+                          <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-sm font-medium truncate">{g.name}</span>
+                    </label>
                   );
                 })}
               </div>
+              {linkedGroupIds.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {linkedGroupIds.length} grupo{linkedGroupIds.length !== 1 ? 's' : ''} seleccionado{linkedGroupIds.length !== 1 ? 's' : ''}
+                </p>
+              )}
             </div>
           )}
         </CardContent>
