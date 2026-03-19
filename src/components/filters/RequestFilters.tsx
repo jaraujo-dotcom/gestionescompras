@@ -100,7 +100,7 @@ export function RequestFilters({ filters, onChange, userGroupIds }: RequestFilte
 
       {displayGroups.length > 0 && (
         <Select value={filters.groupId} onValueChange={(v) => update({ groupId: v })}>
-          <SelectTrigger className="w-[160px] h-8 text-sm">
+          <SelectTrigger className="w-[140px] sm:w-[160px] h-8 text-sm">
             <SelectValue placeholder="Grupo" />
           </SelectTrigger>
           <SelectContent>
