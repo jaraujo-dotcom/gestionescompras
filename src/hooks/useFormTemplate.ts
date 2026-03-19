@@ -51,37 +51,32 @@ export function useFormTemplate(options?: UseFormTemplateOptions): UseFormTempla
 
   // Filter templates by user groups when userGroupIds change
   useEffect(() => {
-    if (!userGroupIds || userGroupIds.length === 0) {
-      // No groups loaded yet or user has no groups – show nothing
-      setTemplates([]);
-      return;
-    }
-
     const filterByGroups = async () => {
-      // Check if ANY template-group links exist at all (backward compat)
-      const { count } = await supabase
+      // Get ALL template-group links to know which templates have groups assigned
+      const { data: allLinks } = await supabase
         .from('form_template_groups')
-        .select('id', { count: 'exact', head: true });
+        .select('template_id, group_id');
 
-      if (!count || count === 0) {
-        // No links configured yet – show all templates
+      if (!allLinks || allLinks.length === 0) {
+        // No links configured at all – show all templates
         setTemplates(allTemplates);
         return;
       }
 
-      // Links exist – only show templates linked to user's groups
-      const { data } = await supabase
-        .from('form_template_groups')
-        .select('template_id')
-        .in('group_id', userGroupIds);
+      // Templates that have at least one group linked
+      const templatesWithGroups = new Set(allLinks.map((l: any) => l.template_id));
 
-      if (data && data.length > 0) {
-        const allowedIds = new Set(data.map((d: any) => d.template_id));
-        setTemplates(allTemplates.filter((t) => allowedIds.has(t.id)));
-      } else {
-        // User's groups have no templates linked
-        setTemplates([]);
-      }
+      // Templates linked to the user's groups
+      const userLinkedIds = new Set(
+        allLinks
+          .filter((l: any) => userGroupIds && userGroupIds.includes(l.group_id))
+          .map((l: any) => l.template_id)
+      );
+
+      // Show: templates without any group (available to all) + templates linked to user's groups
+      setTemplates(
+        allTemplates.filter((t) => !templatesWithGroups.has(t.id) || userLinkedIds.has(t.id))
+      );
     };
     filterByGroups();
   }, [allTemplates, userGroupIds?.join(',')]);
