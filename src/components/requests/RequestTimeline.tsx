@@ -2,23 +2,22 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { RequestStatus, STATUS_LABELS, Profile } from '@/types/database';
-import { MessageSquare, Send, Loader2, Clock, User, GitCommitHorizontal, MessageCircle } from 'lucide-react';
+import { RequestStatus } from '@/types/database';
+import { Loader2, Clock, GitCommitHorizontal, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { sendNotification } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
+import { CommentInput } from './CommentInput';
+import { CommentAttachments } from './CommentAttachments';
 
 interface TimelineEntry {
   id: string;
   type: 'comment' | 'status';
   created_at: string;
   userName: string;
-  // comment fields
   comment?: string;
-  // status fields
+  attachments?: { name: string; path: string; type: string; size: number }[];
   toStatus?: RequestStatus;
   statusComment?: string;
 }
@@ -31,10 +30,8 @@ interface RequestTimelineProps {
 
 export function RequestTimeline({ requestId, requestNumber, history }: RequestTimelineProps) {
   const { user, profile } = useAuth();
-  const [comments, setComments] = useState<{ id: string; user_id: string; comment: string; created_at: string; profile?: { id: string; name: string } }[]>([]);
-  const [newComment, setNewComment] = useState('');
+  const [comments, setComments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchComments();
@@ -67,39 +64,30 @@ export function RequestTimeline({ requestId, requestNumber, history }: RequestTi
     }
   };
 
-  const handleSubmit = async () => {
-    if (!newComment.trim() || !user) return;
+  const handleSubmitComment = async (comment: string, attachmentPaths: { name: string; path: string; type: string; size: number }[]) => {
+    if (!user) return;
 
-    setSubmitting(true);
-    try {
-      const { error } = await supabase.from('request_comments').insert({
-        request_id: requestId,
-        user_id: user.id,
-        comment: newComment.trim(),
-      });
+    const { error } = await supabase.from('request_comments').insert({
+      request_id: requestId,
+      user_id: user.id,
+      comment: comment || '📎 Archivos adjuntos',
+      attachments_json: attachmentPaths.length > 0 ? attachmentPaths : undefined,
+    } as any);
 
-      if (error) throw error;
+    if (error) throw error;
 
-      sendNotification({
-        requestId,
-        eventType: 'new_comment',
-        title: `Nuevo comentario${requestNumber ? ` en #${String(requestNumber).padStart(6, '0')}` : ''}`,
-        message: `${profile?.name || 'Usuario'}: ${newComment.trim().substring(0, 100)}${newComment.trim().length > 100 ? '...' : ''}`,
-        triggeredBy: user.id,
-      });
+    sendNotification({
+      requestId,
+      eventType: 'new_comment',
+      title: `Nuevo comentario${requestNumber ? ` en #${String(requestNumber).padStart(6, '0')}` : ''}`,
+      message: `${profile?.name || 'Usuario'}: ${(comment || '📎 Archivos adjuntos').substring(0, 100)}`,
+      triggeredBy: user.id,
+    });
 
-      setNewComment('');
-      toast.success('Comentario agregado');
-      fetchComments();
-    } catch (error: any) {
-      console.error('Error adding comment:', error);
-      toast.error(`Error al agregar comentario: ${error.message}`);
-    } finally {
-      setSubmitting(false);
-    }
+    toast.success('Comentario agregado');
+    fetchComments();
   };
 
-  // Merge comments and history into a single sorted timeline
   const entries: TimelineEntry[] = [
     ...comments.map((c) => ({
       id: c.id,
@@ -107,6 +95,7 @@ export function RequestTimeline({ requestId, requestNumber, history }: RequestTi
       created_at: c.created_at,
       userName: c.profile?.name || 'Usuario',
       comment: c.comment,
+      attachments: Array.isArray(c.attachments_json) ? c.attachments_json : [],
     })),
     ...history.map((h) => ({
       id: h.id,
@@ -127,27 +116,8 @@ export function RequestTimeline({ requestId, requestNumber, history }: RequestTi
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* New comment input */}
-        <div className="flex gap-2 pb-4 border-b">
-          <Textarea
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Escriba un comentario de seguimiento..."
-            rows={2}
-            className="flex-1"
-            maxLength={2000}
-          />
-          <Button
-            onClick={handleSubmit}
-            disabled={submitting || !newComment.trim()}
-            size="icon"
-            className="self-end"
-          >
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </Button>
-        </div>
+        <CommentInput onSubmit={handleSubmitComment} submitting={false} />
 
-        {/* Timeline */}
         {loading ? (
           <div className="flex justify-center py-4">
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -156,19 +126,14 @@ export function RequestTimeline({ requestId, requestNumber, history }: RequestTi
           <p className="text-sm text-muted-foreground text-center py-4">Sin actividad registrada</p>
         ) : (
           <div className="relative">
-            {/* Vertical line */}
             <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
-
             <div className="space-y-0">
               {entries.map((entry) => (
                 <div key={entry.id} className="relative flex gap-3 py-3">
-                  {/* Icon */}
                   <div
                     className={cn(
                       'relative z-10 w-8 h-8 rounded-full flex items-center justify-center shrink-0 ring-4 ring-background',
-                      entry.type === 'comment'
-                        ? 'bg-primary/15 text-primary'
-                        : 'bg-muted text-muted-foreground'
+                      entry.type === 'comment' ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
                     )}
                   >
                     {entry.type === 'comment' ? (
@@ -178,7 +143,6 @@ export function RequestTimeline({ requestId, requestNumber, history }: RequestTi
                     )}
                   </div>
 
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-sm">{entry.userName}</span>
@@ -194,6 +158,10 @@ export function RequestTimeline({ requestId, requestNumber, history }: RequestTi
                       <div className="mt-1 text-sm bg-primary/5 border border-primary/10 rounded-lg px-3 py-2 whitespace-pre-wrap">
                         {entry.comment}
                       </div>
+                    )}
+
+                    {entry.type === 'comment' && entry.attachments && entry.attachments.length > 0 && (
+                      <CommentAttachments attachments={entry.attachments} />
                     )}
 
                     {entry.type === 'status' && entry.statusComment && (
