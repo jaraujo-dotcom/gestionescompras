@@ -124,8 +124,8 @@ export default function EditRequest() {
           title,
           status: newStatus,
           data_json: formValues as unknown as Record<string, never>,
-          fields_snapshot_json: fields.length > 0 ? fields as any : null,
-          sections_snapshot_json: sections.length > 0 ? sections as any : null,
+          fields_snapshot_json: fields.length > 0 ? JSON.parse(JSON.stringify(fields)) : null,
+          sections_snapshot_json: sections.length > 0 ? JSON.parse(JSON.stringify(sections)) : null,
         })
         .eq('id', request.id);
 
