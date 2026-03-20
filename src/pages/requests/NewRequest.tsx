@@ -96,6 +96,8 @@ export default function NewRequest() {
         created_by: user.id,
         status,
         data_json: formValues as unknown as Record<string, never>,
+        fields_snapshot_json: fields.length > 0 ? fields : null,
+        sections_snapshot_json: sections.length > 0 ? sections : null,
       };
       if (selectedGroupId && selectedGroupId !== '__none__') {
         insertData.group_id = selectedGroupId;

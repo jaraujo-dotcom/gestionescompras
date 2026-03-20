@@ -95,17 +95,17 @@ export default function RequestDetail() {
         setGroupName(null);
       }
 
-      // Fetch template, fields, sections
+      // Fetch template, fields, sections (use snapshot if available)
       if (req.template_id) {
-        const [templateRes, fieldsRes, sectionsRes] = await Promise.all([
-          supabase.from('form_templates').select('*').eq('id', req.template_id).single(),
-          supabase.from('form_fields').select('*').eq('template_id', req.template_id).order('field_order'),
-          supabase.from('form_sections').select('*').eq('template_id', req.template_id).order('section_order'),
-        ]);
-
+        const templateRes = await supabase.from('form_templates').select('*').eq('id', req.template_id).single();
         if (templateRes.data) setTemplate(templateRes.data as FormTemplate);
-        if (fieldsRes.data) {
-          const parsedFields = fieldsRes.data.map((f: any) => ({
+
+        const snapshotFields = (req as any).fields_snapshot_json as FormField[] | null;
+        const snapshotSections = (req as any).sections_snapshot_json as FormSection[] | null;
+
+        if (snapshotFields && snapshotFields.length > 0) {
+          // Use snapshot (frozen at creation time)
+          const parsedFields = snapshotFields.map((f: any) => ({
             ...f,
             field_type: f.field_type as FormField['field_type'],
             options_json: f.options_json as string[] | null,
@@ -114,13 +114,36 @@ export default function RequestDetail() {
             section_id: f.section_id || null,
           }));
           setFields(parsedFields);
-          setHasExternalFields(fieldsRes.data.some((f: any) =>
+          setHasExternalFields(parsedFields.some((f: any) =>
             f.is_external === true ||
             (f.field_type === 'table' && Array.isArray(f.table_schema_json) &&
               (f.table_schema_json as any[]).some((col: any) => col.is_external))
           ));
+          setSections((snapshotSections || []) as FormSection[]);
+        } else {
+          // Fallback: load live from template (legacy requests without snapshot)
+          const [fieldsRes, sectionsRes] = await Promise.all([
+            supabase.from('form_fields').select('*').eq('template_id', req.template_id).order('field_order'),
+            supabase.from('form_sections').select('*').eq('template_id', req.template_id).order('section_order'),
+          ]);
+          if (fieldsRes.data) {
+            const parsedFields = fieldsRes.data.map((f: any) => ({
+              ...f,
+              field_type: f.field_type as FormField['field_type'],
+              options_json: f.options_json as string[] | null,
+              table_schema_json: f.table_schema_json as unknown as TableColumnSchema[] | null,
+              dependency_json: f.dependency_json as unknown as FieldDependency | null,
+              section_id: f.section_id || null,
+            }));
+            setFields(parsedFields);
+            setHasExternalFields(fieldsRes.data.some((f: any) =>
+              f.is_external === true ||
+              (f.field_type === 'table' && Array.isArray(f.table_schema_json) &&
+                (f.table_schema_json as any[]).some((col: any) => col.is_external))
+            ));
+          }
+          setSections((sectionsRes.data || []) as FormSection[]);
         }
-        setSections((sectionsRes.data || []) as FormSection[]);
       }
 
       // Fetch workflow steps
