@@ -576,9 +576,11 @@ export type Database = {
           created_at: string
           created_by: string
           data_json: Json
+          fields_snapshot_json: Json | null
           group_id: string | null
           id: string
           request_number: number
+          sections_snapshot_json: Json | null
           status: Database["public"]["Enums"]["request_status"]
           template_id: string | null
           title: string
@@ -588,9 +590,11 @@ export type Database = {
           created_at?: string
           created_by: string
           data_json?: Json
+          fields_snapshot_json?: Json | null
           group_id?: string | null
           id?: string
           request_number?: number
+          sections_snapshot_json?: Json | null
           status?: Database["public"]["Enums"]["request_status"]
           template_id?: string | null
           title: string
@@ -600,9 +604,11 @@ export type Database = {
           created_at?: string
           created_by?: string
           data_json?: Json
+          fields_snapshot_json?: Json | null
           group_id?: string | null
           id?: string
           request_number?: number
+          sections_snapshot_json?: Json | null
           status?: Database["public"]["Enums"]["request_status"]
           template_id?: string | null
           title?: string
