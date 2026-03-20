@@ -8,7 +8,7 @@
 
 ## 2. Tablas Principales y Relaciones
 
-El esquema consta de **19 tablas** organizadas en 7 dominios:
+El esquema consta de **17 tablas** organizadas en 7 dominios:
 
 ### Diagrama de Relaciones
 
@@ -27,12 +27,13 @@ auth.users ──trigger──> profiles
 
 form_templates ──> form_sections ──> form_fields
        │     │
-       │     └──> groups (executor_group_id)
+       │     ├──> groups (executor_group_id)
+       │     └──> form_template_groups ──> groups
        ▼
 workflow_templates ──> workflow_steps
 
 requests ──────┬──> request_items
-  │            ├──> request_comments
+  │            ├──> request_comments (con attachments_json)
   │            ├──> request_status_history
   │            ├──> request_approvals
   │            ├──> request_workflow_steps
@@ -40,9 +41,9 @@ requests ──────┬──> request_items
   │            └──> external_invitations
   │
   ├──> form_templates (template_id)
-  └──> groups (group_id)
-
-notification_events ──> notification_configs
+  ├──> groups (group_id)
+  ├── fields_snapshot_json (copia congelada de campos)
+  └── sections_snapshot_json (copia congelada de secciones)
 ```
 
 ### 2.1 Dominio: Usuarios
@@ -62,8 +63,16 @@ notification_events ──> notification_configs
 | `form_templates` | Plantillas de formulario | `id`, `name`, `is_active`, `default_workflow_id`, `executor_group_id` |
 | `form_sections` | Secciones dentro de una plantilla | `template_id`, `name`, `section_order`, `is_collapsible` |
 | `form_fields` | Campos de un formulario | `template_id`, `section_id`, `field_key`, `field_type` (enum), `is_required`, `options_json`, `table_schema_json`, `dependency_json`, `validation_json`, `is_external`, `external_mode` |
+| `form_template_groups` | Vinculación de plantillas a grupos (muchos a muchos) | `template_id`, `group_id` |
 
 **Tipos de campo** (`field_type` enum): `text`, `number`, `date`, `select`, `boolean`, `table`, `file`
+
+#### Vinculación de Plantillas a Grupos
+
+Las plantillas se vinculan a grupos mediante la tabla `form_template_groups`. Esto controla qué formularios puede ver un usuario al crear una solicitud:
+
+- **Plantilla CON grupos vinculados**: Solo visible para usuarios que pertenezcan a al menos uno de los grupos vinculados.
+- **Plantilla SIN grupos vinculados**: Visible para **todos** los usuarios autenticados.
 
 #### Grupo Ejecutor (`executor_group_id`)
 
@@ -77,10 +86,39 @@ Si una plantilla **no tiene** `default_workflow_id` asignado, las solicitudes cr
 
 | Tabla | Descripción | Columnas Clave |
 |-------|-------------|----------------|
-| `requests` | Solicitudes de compra | `id`, `request_number` (secuencial), `template_id`, `title`, `created_by`, `status` (enum), `group_id`, `data_json` |
+| `requests` | Solicitudes de compra | `id`, `request_number` (secuencial), `template_id`, `title`, `created_by`, `status` (enum), `group_id`, `data_json`, `fields_snapshot_json`, `sections_snapshot_json` |
 | `request_items` | Artículos de una solicitud | `request_id`, `nombre_articulo`, `categoria`, `unidad_medida`, `cantidad`, `precio_estimado` |
-| `request_comments` | Comentarios de seguimiento | `request_id`, `user_id`, `comment` |
+| `request_comments` | Comentarios de seguimiento con adjuntos | `request_id`, `user_id`, `comment`, `attachments_json` |
 | `request_status_history` | Historial de cambios de estado | `request_id`, `from_status`, `to_status`, `changed_by`, `comment` |
+
+#### Snapshots de Formularios (Datos Estáticos)
+
+Al crear o enviar una solicitud, se guarda una **copia congelada** de la estructura del formulario:
+
+- `fields_snapshot_json` (JSONB, nullable): Copia completa de los campos del formulario tal como estaban al momento de crear la solicitud.
+- `sections_snapshot_json` (JSONB, nullable): Copia completa de las secciones.
+
+**Comportamiento:**
+- **Solicitudes con snapshot**: La visualización y edición usan los campos/secciones del snapshot. Cambios posteriores a la plantilla **no afectan** solicitudes existentes.
+- **Solicitudes sin snapshot** (legacy): Se usa la plantilla actual como fallback.
+- **Borradores editados**: El snapshot se actualiza al guardar cambios para reflejar la versión más reciente de la plantilla.
+
+#### Adjuntos en Comentarios
+
+Los comentarios (`request_comments`) incluyen un campo `attachments_json` (JSONB) que almacena un array de objetos con la metadata de archivos adjuntos:
+
+```json
+[
+  {
+    "name": "documento.pdf",
+    "path": "comment-attachments/{request_id}/{uuid}-documento.pdf",
+    "size": 102400,
+    "type": "application/pdf"
+  }
+]
+```
+
+Los archivos se almacenan en el bucket `form-attachments` bajo el prefijo `comment-attachments/`.
 
 ### 2.4 Dominio: Invitaciones Externas
 
@@ -109,8 +147,8 @@ Los campos de formulario con `is_external = true` o `external_mode = 'editable'`
 | Tabla | Descripción | Columnas Clave |
 |-------|-------------|----------------|
 | `notifications` | Notificaciones in-app por usuario | `user_id`, `title`, `message`, `type` (`status_change`, `new_comment`, `assignment`, `external_data`), `request_id`, `is_read` |
-| `notification_events` | Catálogo de eventos notificables | `event_key`, `name`, `is_active`, `is_system` |
-| `notification_configs` | Configuración por evento (canales, plantillas, roles destino) | `event_id`, `channel_email`, `channel_inapp`, `target_roles`, `include_creator`, plantillas de email e in-app |
+
+Las notificaciones se crean mediante la función `sendNotification()` del frontend, que llama a la edge function `send-notification`. Los destinatarios se determinan con la función SQL `get_notifiable_users()`.
 
 ---
 
@@ -120,13 +158,15 @@ Los roles se definen con el enum `app_role` y se asignan en la tabla `user_roles
 
 | Rol | Clave | Descripción de Negocio |
 |-----|-------|------------------------|
-| Solicitante | `solicitante` | Crea y envía solicitudes de compra. Ve sus propias solicitudes y las de sus grupos. |
+| Solicitante | `solicitante` | Crea y envía solicitudes de compra. **Solo ve sus propias solicitudes**. |
 | Revisor | `revisor` | Revisa todas las solicitudes enviadas (no borradores). Puede devolver o avanzar estados. |
 | Gerencia | `gerencia` | Aprueba solicitudes **solo de sus grupos**. Primer nivel de aprobación. |
 | Procesos | `procesos` | Aprueba solicitudes a nivel de procesos. Acceso global (no borradores). |
 | Integridad de Datos | `integridad_datos` | Aprueba solicitudes verificando integridad. Acceso global (no borradores). |
 | Ejecutor | `ejecutor` | Ejecuta solicitudes aprobadas. Ve solicitudes en estado `aprobada` en adelante. **Si pertenece al grupo ejecutor** de una plantilla, puede ver todas las solicitudes de ese tipo (excepto borradores). |
 | Administrador | `administrador` | Acceso total a todo el sistema. Puede actuar en nombre de cualquier rol de aprobación. |
+
+> **Nota sobre Solicitante**: El rol solicitante **NO puede ver solicitudes de otros usuarios** de su grupo. Solo ve las solicitudes que él mismo creó. Tampoco se le muestra el filtro de grupo en la lista de solicitudes.
 
 ### Tabla `role_definitions`
 
@@ -147,11 +187,12 @@ SELECT EXISTS (
   LEFT JOIN form_templates ft ON ft.id = r.template_id
   WHERE r.id = _request_id AND (
     r.created_by = _user_id                                    -- Creador siempre ve la suya
-    OR (r.group_id IS NOT NULL 
-        AND user_in_group(_user_id, r.group_id))               -- Miembros del mismo grupo
-    OR (has_role('revisor') AND status != 'borrador')           -- Revisor: todo menos borradores
-    OR (has_role('procesos') AND status != 'borrador')          -- Procesos: todo menos borradores
-    OR (has_role('integridad_datos') AND status != 'borrador')  -- Integridad: todo menos borradores
+    OR (r.group_id IS NOT NULL
+        AND user_in_group(_user_id, r.group_id)
+        AND has_role(_user_id, 'gerencia'))                    -- Gerencia: solo su grupo
+    OR (has_role('revisor') AND status NOT IN ('borrador'))     -- Revisor: todo menos borradores
+    OR (has_role('procesos') AND status NOT IN ('borrador'))    -- Procesos: todo menos borradores
+    OR (has_role('integridad_datos') AND status NOT IN ('borrador'))  -- Integridad: todo menos borradores
     OR (has_role('ejecutor') AND (
         status IN ('aprobada','en_ejecucion','en_espera','completada','anulada')
         OR (ft.executor_group_id IS NOT NULL                   -- Ejecutor del grupo ejecutor:
@@ -168,8 +209,7 @@ SELECT EXISTS (
 | Rol | Borradores | En Revisión | Aprobada | En Ejecución | Completada | Rechazada | Devuelta | Anulada |
 |-----|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Solicitante** (propias) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Solicitante** (grupo) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Gerencia** (su grupo) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Gerencia** (su grupo) | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Revisor** | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Procesos** | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Integridad Datos** | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -188,6 +228,9 @@ SELECT EXISTS (
 | `has_role(_user_id, _role)` | `SECURITY DEFINER` | Verifica si un usuario tiene un rol específico. Evita recursión en RLS. |
 | `user_in_group(_user_id, _group_id)` | `SECURITY DEFINER` | Verifica membresía en un grupo. |
 | `get_user_group_ids(_user_id)` | `SECURITY DEFINER` | Retorna array de IDs de grupos del usuario. |
+| `get_user_roles(_user_id)` | `SECURITY DEFINER` | Retorna array de roles del usuario. |
+| `get_profiles_by_ids(_ids)` | `SECURITY DEFINER` | Resolución segura de nombres (solo perfiles accesibles). |
+| `get_notifiable_users(_request_id, _exclude)` | `SECURITY DEFINER` | Destinatarios de notificaciones por solicitud. |
 
 ---
 
@@ -247,7 +290,7 @@ SELECT EXISTS (
 
 1. Al enviar una solicitud, el sistema verifica si la plantilla tiene un workflow asignado (`default_workflow_id`):
    - **Con workflow**: La solicitud pasa a `en_revision` y se instancian los pasos en `request_workflow_steps`.
-   - **Sin workflow**: La solicitud pasa **directamente a `en_ejecucion`**, saltando todo el proceso de aprobación.
+   - **Sin workflow**: La solicitud pasa **directamente a `aprobada`**, saltando todo el proceso de aprobación.
 2. Cada paso tiene un `role_name` y `step_order`. Los pasos con el **mismo `step_order`** se ejecutan en **paralelo**.
 3. Los aprobadores con el rol correspondiente pueden aprobar/rechazar/devolver su paso.
 4. Las decisiones se registran en `request_approvals` (histórico) y se actualizan en `request_workflow_steps` (estado actual).
@@ -274,6 +317,7 @@ SELECT EXISTS (
 |---------|-------|--------|---------|
 | `on_auth_user_created` | `auth.users` | AFTER INSERT | `handle_new_user()` |
 | `validate_approval` | `request_approvals` | BEFORE INSERT/UPDATE | `validate_approval_status()` |
+| `validate_invitation` | `external_invitations` | BEFORE INSERT/UPDATE | `validate_invitation_status()` |
 | `update_*_updated_at` | Varias tablas | BEFORE UPDATE | `update_updated_at_column()` |
 
 ### Funciones
@@ -294,6 +338,9 @@ VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, 
 
 #### `validate_approval_status()` — Validación de aprobaciones
 Verifica que solo se usen estados y roles válidos al insertar/actualizar en `request_approvals`.
+
+#### `validate_invitation_status()` — Validación de invitaciones
+Verifica que el status de invitaciones sea uno de: `pending`, `completed`, `expired`.
 
 #### `get_profiles_by_ids(_ids uuid[])` — Resolución segura de nombres
 Retorna `id` y `name` de perfiles, pero **solo** si el llamante tiene derecho a ver esos perfiles (porque compartió request, comentarios, o es admin). Previene enumeración de usuarios.
@@ -317,9 +364,13 @@ SELECT ARRAY_AGG(role) FROM user_roles WHERE user_id = _user_id;
 |-----------|-------|
 | Nombre | `form-attachments` |
 | Público | No (requiere autenticación) |
-| Uso | Archivos adjuntos en campos tipo `file` de formularios dinámicos |
+| Uso | Archivos adjuntos en campos tipo `file` de formularios dinámicos y adjuntos de comentarios |
 
-Los archivos se suben asociados a un campo de formulario y se referencian en el `data_json` de la solicitud.
+**Estructura de rutas:**
+- Campos de formulario: `{request_id}/{uuid}-{filename}`
+- Adjuntos de comentarios: `comment-attachments/{request_id}/{uuid}-{filename}`
+
+Los archivos se referencian en el `data_json` de la solicitud (para campos file) o en `attachments_json` de comentarios.
 
 ---
 
@@ -327,7 +378,7 @@ Los archivos se suben asociados a un campo de formulario y se referencian en el 
 
 | Función | Propósito |
 |---------|-----------|
-| `send-notification` | Envía notificaciones por email (via webhook N8N) e in-app basándose en la configuración de `notification_configs` |
+| `send-notification` | Envía notificaciones por email (via webhook N8N) e in-app. Usa `get_notifiable_users()` para determinar destinatarios. |
 | `external-form` | Gestiona formularios para terceros externos. GET: retorna campos y datos existentes con flags `_readonly`. POST: valida token, filtra solo campos con `external_mode = 'editable'`, actualiza `data_json` de la solicitud, marca invitación como completada y notifica al creador. |
 
 ### 8.1 Reglas de Entrega de Notificaciones (Filtrado Inteligente)
@@ -342,7 +393,7 @@ La edge function `send-notification` filtra los destinatarios según el **contex
 | **Procesos** | Es aprobador en el flujo de trabajo (`request_workflow_steps`) de esa solicitud, O pertenece al `executor_group_id` |
 | **Integridad de Datos** | Es aprobador en el flujo de trabajo de esa solicitud, O pertenece al `executor_group_id` |
 | **Administrador** | Siempre (sin filtro de grupo) |
-| **Creador** | Según configuración `include_creator` del `notification_config` |
+| **Creador** | Siempre recibe notificaciones de su propia solicitud |
 
 Esto evita que usuarios reciban notificaciones de solicitudes que no les corresponden por grupo o contexto de aprobación.
 
@@ -380,4 +431,16 @@ CREATE TYPE field_type AS ENUM (
 
 ---
 
-*Última actualización: Febrero 2026*
+## 11. Secrets Configurados
+
+| Secret | Uso |
+|--------|-----|
+| `N8N_EMAIL_WEBHOOK_URL` | URL del webhook de N8N para envío de emails |
+| `LOVABLE_API_KEY` | API key para funcionalidades de IA de Lovable |
+| `SUPABASE_URL` | URL del proyecto Supabase |
+| `SUPABASE_ANON_KEY` | Clave anónima de Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clave de servicio de Supabase (uso en edge functions) |
+
+---
+
+*Última actualización: Marzo 2026*
