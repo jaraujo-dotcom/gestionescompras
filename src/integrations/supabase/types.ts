@@ -396,6 +396,7 @@ export type Database = {
       }
       request_comments: {
         Row: {
+          attachments_json: Json | null
           comment: string
           created_at: string
           id: string
@@ -403,6 +404,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attachments_json?: Json | null
           comment: string
           created_at?: string
           id?: string
@@ -410,6 +412,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attachments_json?: Json | null
           comment?: string
           created_at?: string
           id?: string
