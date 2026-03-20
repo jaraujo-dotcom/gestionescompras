@@ -20,7 +20,50 @@ export function DynamicForm({ fields, sections = [], values, onChange, readOnly 
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
   const handleFieldChange = (key: string, value: unknown) => {
-    onChange({ ...values, [key]: value });
+    const newValues: Record<string, unknown> = { ...values, [key]: value };
+
+    // Mirror sync: if the changed field is a table, find all other table fields
+    // that have at least one column with mirror_source_field === key, and sync their rows.
+    for (const field of fields) {
+      if (field.field_type !== 'table') continue;
+      if (field.field_key === key) continue;
+
+      const columns = field.table_schema_json || [];
+      const mirrorCols = columns.filter((c) => c.mirror_source_field === key);
+      if (mirrorCols.length === 0) continue;
+
+      const sourceRows = Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
+      const existingRows = Array.isArray(newValues[field.field_key])
+        ? [...(newValues[field.field_key] as Record<string, unknown>[])]
+        : [];
+
+      // Build the synced row array: one row per source row
+      const syncedRows = sourceRows.map((srcRow, i) => {
+        // Start from the existing row at this index (to preserve free columns), or blank
+        const base: Record<string, unknown> = { ...existingRows[i] };
+
+        // (Re-)initialise blank non-mirrored columns for new rows
+        if (!existingRows[i]) {
+          columns.forEach((col) => {
+            if (!col.mirror_source_field) {
+              base[col.key] = col.type === 'boolean' ? false : '';
+            }
+          });
+        }
+
+        // Overwrite mirrored columns with the source value
+        for (const mc of mirrorCols) {
+          if (mc.mirror_source_column) {
+            base[mc.key] = srcRow[mc.mirror_source_column] ?? '';
+          }
+        }
+        return base;
+      });
+
+      newValues[field.field_key] = syncedRows;
+    }
+
+    onChange(newValues);
   };
 
   const toggleSection = (sectionId: string) => {

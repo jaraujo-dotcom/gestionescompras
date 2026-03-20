@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, CopyCheck, Upload, X, FileText, Image } from 'lucide-react';
+import { Plus, Trash2, CopyCheck, Upload, X, FileText, Image, Lock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
@@ -114,7 +114,9 @@ function TableFieldInput({
     const colVisible = shouldShowColumn(col.rules ?? [], row, allFormValues);
     if (!colVisible) return null;
 
-    const isColReadonly = readOnly || (col as any)._readonly === true;
+    // A column with mirror_source_field is always read-only — controlled by the source table
+    const isMirrored = Boolean(col.mirror_source_field);
+    const isColReadonly = readOnly || (col as any)._readonly === true || isMirrored;
 
     const colRequired = (col.required || false) || isColumnDynamicallyRequired(col.rules ?? [], row, allFormValues);
     const val = row[col.key];
@@ -188,8 +190,18 @@ function TableFieldInput({
 
     return (
       <div className="flex items-center gap-0.5" data-required={colRequired || undefined}>
-        <div className="flex-1">
+        <div className="flex-1 relative">
           {cellContent}
+          {isMirrored && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  <Lock className="w-3 h-3" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">Vinculado automáticamente</TooltipContent>
+            </Tooltip>
+          )}
           {error && <p className="text-xs text-destructive mt-0.5">{error}</p>}
         </div>
         {!isColReadonly && rowIdx < rows.length - 1 && (
@@ -271,7 +283,8 @@ function TableFieldInput({
           </TableBody>
         </Table>
       </div>
-      {!readOnly && (
+      {/* Hide the manual add-row button for mirrored tables (rows are managed by the source table) */}
+      {!readOnly && !columns.some((c) => c.mirror_source_field) && (
         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={addRow}>
           <Plus className="w-3 h-3 mr-1" /> Agregar fila
         </Button>
