@@ -1,105 +1,42 @@
 
 
-# Plan: Portal de Invitados Externos para Precarga de Solicitudes
+## Plan: Hacer estáticos los datos de formularios en solicitudes
 
-## Resumen
+### Problema actual
+Cuando se visualiza una solicitud, el sistema carga los campos (`form_fields`) y secciones (`form_sections`) **en vivo** desde la plantilla. Si un admin modifica la plantilla después, las solicitudes antiguas se ven con la estructura nueva (campos nuevos vacíos, campos eliminados desaparecen, etc.).
 
-Permitir que un usuario interno genere un enlace temporal (token) para que un tercero (ej. proveedor) complete campos específicos de una solicitud en borrador, sin necesidad de cuenta en el sistema. El tercero ve una página aislada con solo los campos marcados como "visibles para externos".
+### Solución
+Guardar una **snapshot** (copia) de los campos y secciones en el momento de crear/enviar la solicitud. Al visualizar, usar la snapshot en lugar de la plantilla actual.
 
-## Modelo de Datos
+### Cambios
 
-### Nueva tabla: `external_invitations`
+**1. Migración de base de datos**
+- Agregar dos columnas a la tabla `requests`:
+  - `fields_snapshot_json` (jsonb, nullable) — copia de los campos del formulario
+  - `sections_snapshot_json` (jsonb, nullable) — copia de las secciones
 
-| Columna | Tipo | Descripción |
-|---|---|---|
-| id | uuid PK | |
-| request_id | uuid FK → requests | Solicitud asociada |
-| token | text UNIQUE | Hash seguro para la URL |
-| status | text | `pending`, `completed`, `expired` |
-| expires_at | timestamptz | Caducidad configurable |
-| guest_name | text | Nombre del invitado (opcional, para referencia) |
-| guest_email | text | Email del invitado (opcional) |
-| created_by | uuid | Usuario interno que generó el enlace |
-| created_at | timestamptz | |
-| completed_at | timestamptz | Fecha en que el tercero envió los datos |
+**2. NewRequest.tsx — Guardar snapshot al crear**
+- Al hacer `insert` de la solicitud, incluir `fields_snapshot_json` con el array de campos y `sections_snapshot_json` con el array de secciones tal como están en ese momento.
 
-RLS: Solo el creador y admins pueden leer/crear invitaciones. Sin acceso público (el acceso del tercero será via edge function).
+**3. RequestDetail.tsx — Usar snapshot para visualización**
+- Al cargar la solicitud, verificar si `fields_snapshot_json` existe:
+  - **Sí**: usar esos campos/secciones para el `DynamicFormView` (solicitudes nuevas)
+  - **No**: cargar desde la plantilla como fallback (solicitudes antiguas creadas antes de este cambio)
 
-### Nuevo campo en `form_fields`: `is_external`
+**4. EditRequest.tsx — Usar snapshot para edición**
+- Misma lógica: si existe snapshot, usar esos campos para el formulario de edición. Si no, fallback a la plantilla actual.
+- Al guardar cambios en un borrador/devuelta, actualizar también el snapshot con los campos actuales de la plantilla (para que refleje la versión más reciente al momento de la última edición).
 
-Un booleano (`default false`) que indica si el campo es visible/editable por invitados externos. Se configura en el FieldEditor del admin.
+**5. exportRequest.ts — Sin cambios**
+- Ya recibe `fields` como parámetro, así que automáticamente usará lo que le pase el caller (snapshot o live).
 
-### Nuevo estado de solicitud: `esperando_tercero`
+### Comportamiento esperado
+- Solicitudes existentes (sin snapshot): siguen funcionando como antes (fallback a plantilla)
+- Solicitudes nuevas: quedan congeladas con la estructura del formulario tal como estaba al crearlas
+- Borradores editados: su snapshot se actualiza cada vez que se editan (para reflejar cambios recientes)
 
-Agregar al enum `request_status` el valor `esperando_tercero` para indicar que la solicitud está pendiente de datos externos.
-
-## Edge Function: `external-form`
-
-Una función pública (sin JWT) que maneja dos operaciones:
-
-**GET (validar token):** Recibe el token, valida que no esté expirado ni completado. Devuelve SOLO los campos marcados como `is_external = true` del formulario, junto con los datos parciales ya precargados por el usuario interno. Nunca envía campos internos.
-
-**POST (enviar datos):** Recibe el token y los valores. Valida el token, valida los campos, actualiza `data_json` de la solicitud (merge), marca la invitación como `completed`, cambia el estado de la solicitud de `esperando_tercero` a `borrador` (para que el interno complete), y envía notificación al creador.
-
-## Cambios en el Frontend
-
-### 1. FieldEditor: nuevo toggle "Visible para externos"
-
-En `src/components/admin/FieldEditor.tsx`, agregar un `Switch` con label "Externo" junto al switch de "Requerido". Controla el nuevo campo `is_external` en `FieldDraft`.
-
-### 2. Nueva página: `/external/:token` (Guest Portal)
-
-Ruta pública fuera del `AppLayout`. Página limpia sin sidebar ni navegación. Flujo:
-- Valida el token via edge function
-- Si válido: muestra formulario con solo campos `is_external`
-- Si expirado/completado: muestra mensaje de error
-- Al enviar: POST a edge function, muestra confirmación
-
-Usa el mismo componente `DynamicForm` pero filtrando solo campos externos.
-
-### 3. En `RequestDetail`: botón "Invitar Externo"
-
-Solo visible cuando la solicitud está en `borrador`. Abre un dialog para:
-- Configurar nombre/email del invitado (opcional)
-- Configurar horas de expiración (default 72h)
-- Generar el enlace y mostrarlo para copiar
-
-### 4. Indicador visual de datos externos
-
-En la vista de solicitud, los campos llenados por el tercero se muestran con un badge o borde que indica "Completado por externo".
-
-## Flujo Completo
-
-```text
-1. Admin marca campos como "Externo" en el editor de plantilla
-2. Usuario interno crea solicitud (borrador), llena sus campos
-3. Hace clic en "Invitar Externo" → genera enlace con token
-4. Solicitud pasa a estado "esperando_tercero"
-5. Tercero abre enlace → ve solo campos externos → llena → envía
-6. Solicitud vuelve a "borrador", usuario interno recibe notificación
-7. Usuario interno revisa, completa campos faltantes, envía a revisión
-```
-
-## Seguridad
-
-- Tokens generados con `crypto.randomUUID()` + hash, caducidad configurable
-- Edge function usa service role para leer/escribir, pero SOLO expone campos `is_external`
-- El token se invalida tras uso (status = completed)
-- Rate limiting implícito: un token = un uso
-- No se expone estructura interna del formulario al tercero
-
-## Archivos a Crear/Modificar
-
-| Archivo | Acción |
-|---|---|
-| Migración SQL | Crear tabla `external_invitations`, agregar `is_external` a `form_fields`, agregar `esperando_tercero` al enum |
-| `supabase/functions/external-form/index.ts` | Nueva edge function pública |
-| `src/pages/external/GuestForm.tsx` | Nueva página del portal de invitados |
-| `src/components/admin/FieldEditor.tsx` | Agregar toggle "Externo" |
-| `src/components/requests/ExternalInviteDialog.tsx` | Nuevo dialog para generar enlace |
-| `src/pages/requests/RequestDetail.tsx` | Agregar botón "Invitar Externo" |
-| `src/types/database.ts` | Agregar tipo `ExternalInvitation`, actualizar `RequestStatus` |
-| `src/App.tsx` | Agregar ruta `/external/:token` |
-| `supabase/config.toml` | Configurar `verify_jwt = false` para la nueva función |
-| `DATABASE.md` | Documentar nueva funcionalidad |
+### Detalle técnico
+- Las columnas son nullable para compatibilidad con datos existentes
+- No se requieren cambios en RLS (las columnas viven en `requests` que ya tiene sus políticas)
+- El snapshot incluye toda la metadata de campos (label, tipo, opciones, validaciones, dependencias, tabla schema, etc.)
 
