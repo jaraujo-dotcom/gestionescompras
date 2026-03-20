@@ -45,7 +45,8 @@ export default function EditRequest() {
       setTitle(req.title);
       setFormValues(req.data_json as Record<string, unknown> || {});
 
-      // Fetch fields and sections if template exists
+      // Fetch fields and sections — always use live template for editing
+      // (snapshot will be updated on save)
       if (req.template_id) {
         const [fieldsRes, sectionsRes] = await Promise.all([
           supabase.from('form_fields').select('*').eq('template_id', req.template_id).order('field_order'),
