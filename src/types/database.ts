@@ -126,6 +126,7 @@ export interface TableColumnSchema {
   options?: string[];
   validation?: FieldValidation;
   rules?: FieldRule[]; // conditional rules for this column
+  group?: string; // column group name for visual grouping
 }
 
 // Database entities

@@ -75,6 +75,28 @@ export function DynamicFormView({ fields, sections = [], values }: DynamicFormVi
   );
 }
 
+function buildViewGroupedHeaders(columns: TableColumnSchema[]) {
+  const topRow: ({ type: 'group'; name: string; span: number } | { type: 'standalone'; colKey: string })[] = [];
+  let i = 0;
+  while (i < columns.length) {
+    const col = columns[i];
+    if (col.group) {
+      let span = 0;
+      const groupName = col.group;
+      while (i < columns.length && columns[i].group === groupName) {
+        span++;
+        i++;
+      }
+      topRow.push({ type: 'group', name: groupName, span });
+    } else {
+      topRow.push({ type: 'standalone', colKey: col.key });
+      i++;
+    }
+  }
+  const hasGroups = topRow.some(item => item.type === 'group');
+  return { topRow, hasGroups };
+}
+
 function TableFieldView({ field, value }: { field: FormField; value: unknown }) {
   const columns: TableColumnSchema[] = field.table_schema_json || [];
   const rows = Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
@@ -88,17 +110,50 @@ function TableFieldView({ field, value }: { field: FormField; value: unknown }) 
     );
   }
 
+  const { topRow, hasGroups } = buildViewGroupedHeaders(columns);
+
   return (
     <div className="space-y-1">
       <span className="font-medium text-sm">{field.label}:</span>
       <div className="border rounded-md overflow-auto">
         <Table>
           <TableHeader>
+            {hasGroups && (
+              <TableRow>
+                <TableHead rowSpan={2} className="text-xs whitespace-nowrap w-10 text-center border-b">#</TableHead>
+                {topRow.map((item, idx) => {
+                  if (item.type === 'group') {
+                    return (
+                      <TableHead
+                        key={`grp-${idx}`}
+                        colSpan={item.span}
+                        className="text-xs whitespace-nowrap text-center font-semibold bg-muted/50 border-b border-x"
+                      >
+                        {item.name}
+                      </TableHead>
+                    );
+                  }
+                  const col = columns.find(c => c.key === item.colKey)!;
+                  return (
+                    <TableHead key={col.key} rowSpan={2} className="text-xs whitespace-nowrap border-b">
+                      {col.label}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            )}
             <TableRow>
-              <TableHead className="text-xs whitespace-nowrap w-10 text-center">#</TableHead>
-              {columns.map((col) => (
-                <TableHead key={col.key} className="text-xs whitespace-nowrap">{col.label}</TableHead>
-              ))}
+              {!hasGroups && <TableHead className="text-xs whitespace-nowrap w-10 text-center">#</TableHead>}
+              {hasGroups
+                ? columns.filter(c => c.group).map((col) => (
+                    <TableHead key={col.key} className="text-xs whitespace-nowrap border-x">
+                      {col.label}
+                    </TableHead>
+                  ))
+                : columns.map((col) => (
+                    <TableHead key={col.key} className="text-xs whitespace-nowrap">{col.label}</TableHead>
+                  ))
+              }
             </TableRow>
           </TableHeader>
           <TableBody>
