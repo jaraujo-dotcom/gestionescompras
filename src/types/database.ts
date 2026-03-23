@@ -126,8 +126,6 @@ export interface TableColumnSchema {
   options?: string[];
   validation?: FieldValidation;
   rules?: FieldRule[]; // conditional rules for this column
-  mirror_source_field?: string;  // field_key of the source table field to mirror rows from
-  mirror_source_column?: string; // column key in the source table whose value to copy into this column
 }
 
 // Database entities

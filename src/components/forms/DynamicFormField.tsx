@@ -281,8 +281,7 @@ function TableFieldInput({
           </TableBody>
         </Table>
       </div>
-      {/* Hide the manual add-row button for mirrored tables (rows are managed by the source table) */}
-      {!readOnly && !columns.some((c) => c.mirror_source_field) && (
+      {!readOnly && (
         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={addRow}>
           <Plus className="w-3 h-3 mr-1" /> Agregar fila
         </Button>
