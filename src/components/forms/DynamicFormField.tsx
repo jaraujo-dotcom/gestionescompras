@@ -114,9 +114,7 @@ function TableFieldInput({
     const colVisible = shouldShowColumn(col.rules ?? [], row, allFormValues);
     if (!colVisible) return null;
 
-    // A column with mirror_source_field is always read-only — controlled by the source table
-    const isMirrored = Boolean(col.mirror_source_field);
-    const isColReadonly = readOnly || (col as any)._readonly === true || isMirrored;
+    const isColReadonly = readOnly || (col as any)._readonly === true;
 
     const colRequired = (col.required || false) || isColumnDynamicallyRequired(col.rules ?? [], row, allFormValues);
     const val = row[col.key];
