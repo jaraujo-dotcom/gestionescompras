@@ -214,7 +214,7 @@ function TableFieldInput({
     columns.forEach((col) => {
       emptyRow[col.key] = col.type === 'boolean' ? false : '';
     });
-    onChange(newRows);
+    onChange([...rows, emptyRow]);
   };
 
   const removeRow = (rowIdx: number) => {
