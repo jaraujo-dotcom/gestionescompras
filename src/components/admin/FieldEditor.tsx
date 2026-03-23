@@ -108,8 +108,8 @@ function SortableColumnRow({
   const colRules = col.rules ?? [];
 
   return (
-    <div ref={setNodeRef} style={style} className="space-y-2">
-      <div className="grid grid-cols-[auto_1fr_1fr_auto_auto_auto_auto] gap-2 items-end">
+      <div ref={setNodeRef} style={style} className="space-y-2">
+      <div className="grid grid-cols-[auto_1fr_1fr_auto_auto_auto_auto_auto] gap-2 items-end">
         <div className="flex items-center pt-5 cursor-grab text-muted-foreground" {...attributes} {...listeners}>
           <GripVertical className="w-3 h-3" />
         </div>
@@ -142,6 +142,15 @@ function SortableColumnRow({
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Grupo</Label>
+          <Input
+            value={col.group || ''}
+            onChange={(e) => updateCol({ group: e.target.value || undefined })}
+            placeholder="Ej: Presupuesto"
+            className="h-8 text-xs w-28"
+          />
         </div>
         {col.type === 'select' ? (
           <div className="space-y-1">
