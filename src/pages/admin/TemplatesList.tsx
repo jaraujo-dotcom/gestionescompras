@@ -1,16 +1,29 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { FormTemplate } from '@/types/database';
-import { Loader2, Settings, Plus, Edit } from 'lucide-react';
+import { Loader2, Settings, Plus, Edit, Trash2, Copy } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function TemplatesList() {
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [cloning, setCloning] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchTemplates();
@@ -45,6 +58,138 @@ export default function TemplatesList() {
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error al actualizar plantilla');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    try {
+      // Check if template has associated requests
+      const { count } = await supabase
+        .from('requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('template_id', deleteId);
+
+      if (count && count > 0) {
+        toast.error(`No se puede eliminar: tiene ${count} solicitud(es) asociada(s). Desactívela en su lugar.`);
+        setDeleteId(null);
+        return;
+      }
+
+      // Delete fields, sections, group links, then template
+      await Promise.all([
+        supabase.from('form_fields').delete().eq('template_id', deleteId),
+        supabase.from('form_sections').delete().eq('template_id', deleteId),
+        supabase.from('form_template_groups').delete().eq('template_id', deleteId),
+      ]);
+
+      const { error } = await supabase.from('form_templates').delete().eq('id', deleteId);
+      if (error) throw error;
+
+      toast.success('Plantilla eliminada');
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      toast.error('Error al eliminar la plantilla');
+    } finally {
+      setDeleteId(null);
+    }
+  };
+
+  const handleClone = async (templateId: string) => {
+    setCloning(templateId);
+    try {
+      // Fetch template
+      const { data: tpl, error: tplErr } = await supabase
+        .from('form_templates')
+        .select('*')
+        .eq('id', templateId)
+        .single();
+      if (tplErr) throw tplErr;
+
+      // Fetch fields, sections, group links
+      const [fieldsRes, sectionsRes, groupsRes] = await Promise.all([
+        supabase.from('form_fields').select('*').eq('template_id', templateId).order('field_order'),
+        supabase.from('form_sections').select('*').eq('template_id', templateId).order('section_order'),
+        supabase.from('form_template_groups').select('group_id').eq('template_id', templateId),
+      ]);
+
+      // Create new template
+      const { data: newTpl, error: newErr } = await supabase
+        .from('form_templates')
+        .insert({
+          name: `${tpl.name} (copia)`,
+          description: tpl.description,
+          is_active: false,
+          created_by: tpl.created_by,
+          default_workflow_id: tpl.default_workflow_id,
+          executor_group_id: tpl.executor_group_id,
+        })
+        .select()
+        .single();
+      if (newErr) throw newErr;
+
+      const newTemplateId = newTpl.id;
+
+      // Clone sections and map old IDs to new IDs
+      const sectionIdMap: Record<string, string> = {};
+      if (sectionsRes.data && sectionsRes.data.length > 0) {
+        const sectionsToInsert = sectionsRes.data.map((s: any) => ({
+          template_id: newTemplateId,
+          name: s.name,
+          description: s.description,
+          section_order: s.section_order,
+          is_collapsible: s.is_collapsible,
+        }));
+        const { data: newSections, error: secErr } = await supabase
+          .from('form_sections')
+          .insert(sectionsToInsert)
+          .select();
+        if (secErr) throw secErr;
+        (newSections || []).forEach((ns: any, idx: number) => {
+          sectionIdMap[sectionsRes.data![idx].id] = ns.id;
+        });
+      }
+
+      // Clone fields
+      if (fieldsRes.data && fieldsRes.data.length > 0) {
+        const fieldsToInsert = fieldsRes.data.map((f: any) => ({
+          template_id: newTemplateId,
+          field_key: f.field_key,
+          label: f.label,
+          field_type: f.field_type,
+          is_required: f.is_required,
+          is_external: f.is_external,
+          external_mode: f.external_mode,
+          placeholder: f.placeholder,
+          options_json: f.options_json,
+          table_schema_json: f.table_schema_json,
+          dependency_json: f.dependency_json,
+          validation_json: f.validation_json,
+          field_order: f.field_order,
+          section_id: f.section_id ? (sectionIdMap[f.section_id] || null) : null,
+        }));
+        const { error: fErr } = await supabase.from('form_fields').insert(fieldsToInsert);
+        if (fErr) throw fErr;
+      }
+
+      // Clone group links
+      if (groupsRes.data && groupsRes.data.length > 0) {
+        const groupLinks = groupsRes.data.map((g: any) => ({
+          template_id: newTemplateId,
+          group_id: g.group_id,
+        }));
+        const { error: gErr } = await supabase.from('form_template_groups').insert(groupLinks);
+        if (gErr) throw gErr;
+      }
+
+      toast.success('Plantilla clonada exitosamente');
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error cloning template:', error);
+      toast.error('Error al clonar la plantilla');
+    } finally {
+      setCloning(null);
     }
   };
 
@@ -111,7 +256,7 @@ export default function TemplatesList() {
                       Creada: {new Date(template.created_at).toLocaleDateString('es-ES')}
                     </p>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">Activa</span>
                       <Switch
@@ -119,12 +264,33 @@ export default function TemplatesList() {
                         onCheckedChange={() => toggleActive(template)}
                       />
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleClone(template.id)}
+                      disabled={cloning === template.id}
+                    >
+                      {cloning === template.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Copy className="w-4 h-4 mr-1" />
+                      )}
+                      Clonar
+                    </Button>
                     <Link to={`/admin/templates/${template.id}`}>
                       <Button variant="outline" size="sm">
-                        <Edit className="w-4 h-4 mr-2" />
+                        <Edit className="w-4 h-4 mr-1" />
                         Editar
                       </Button>
                     </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setDeleteId(template.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -132,6 +298,24 @@ export default function TemplatesList() {
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!deleteId} onOpenChange={(o) => { if (!o) setDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar plantilla?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminarán todos los campos y secciones asociados.
+              Si la plantilla tiene solicitudes asociadas, no podrá ser eliminada.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
