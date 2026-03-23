@@ -190,16 +190,6 @@ function TableFieldInput({
       <div className="flex items-center gap-0.5" data-required={colRequired || undefined}>
         <div className="flex-1 relative">
           {cellContent}
-          {isMirrored && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  <Lock className="w-3 h-3" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top">Vinculado automáticamente</TooltipContent>
-            </Tooltip>
-          )}
           {error && <p className="text-xs text-destructive mt-0.5">{error}</p>}
         </div>
         {!isColReadonly && rowIdx < rows.length - 1 && (
