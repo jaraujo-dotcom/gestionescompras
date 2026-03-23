@@ -432,7 +432,19 @@ function TableFieldInput({
               rows.map((row, rowIdx) => (
                 <TableRow key={rowIdx}>
                   <TableCell className="py-1 px-2 text-center text-xs text-muted-foreground font-mono">
-                    {rowIdx + 1}
+                    <div className="flex items-center gap-1">
+                      {!readOnly && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" onClick={() => setEditingRowIdx(rowIdx)}>
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">Editar en formulario</TooltipContent>
+                        </Tooltip>
+                      )}
+                      <span>{rowIdx + 1}</span>
+                    </div>
                   </TableCell>
                   {columns.map((col) => {
                     const cell = renderCell(col, row, rowIdx);
@@ -445,19 +457,9 @@ function TableFieldInput({
                   })}
                   {!readOnly && (
                     <TableCell className="py-1 px-1">
-                      <div className="flex items-center gap-0.5">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => setEditingRowIdx(rowIdx)}>
-                              <Pencil className="w-3 h-3" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">Editar en formulario</TooltipContent>
-                        </Tooltip>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeRow(rowIdx)}>
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeRow(rowIdx)}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
                     </TableCell>
                   )}
                 </TableRow>
