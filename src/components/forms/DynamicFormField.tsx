@@ -214,12 +214,7 @@ function TableFieldInput({
     columns.forEach((col) => {
       emptyRow[col.key] = col.type === 'boolean' ? false : '';
     });
-    const newRows = [...rows, emptyRow];
     onChange(newRows);
-    // Open dialog for new row
-    if (!readOnly) {
-      setEditingRowIdx(newRows.length - 1);
-    }
   };
 
   const removeRow = (rowIdx: number) => {
