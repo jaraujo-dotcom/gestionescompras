@@ -114,9 +114,7 @@ function TableFieldInput({
     const colVisible = shouldShowColumn(col.rules ?? [], row, allFormValues);
     if (!colVisible) return null;
 
-    // A column with mirror_source_field is always read-only — controlled by the source table
-    const isMirrored = Boolean(col.mirror_source_field);
-    const isColReadonly = readOnly || (col as any)._readonly === true || isMirrored;
+    const isColReadonly = readOnly || (col as any)._readonly === true;
 
     const colRequired = (col.required || false) || isColumnDynamicallyRequired(col.rules ?? [], row, allFormValues);
     const val = row[col.key];
@@ -192,16 +190,6 @@ function TableFieldInput({
       <div className="flex items-center gap-0.5" data-required={colRequired || undefined}>
         <div className="flex-1 relative">
           {cellContent}
-          {isMirrored && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  <Lock className="w-3 h-3" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top">Vinculado automáticamente</TooltipContent>
-            </Tooltip>
-          )}
           {error && <p className="text-xs text-destructive mt-0.5">{error}</p>}
         </div>
         {!isColReadonly && rowIdx < rows.length - 1 && (
@@ -283,8 +271,7 @@ function TableFieldInput({
           </TableBody>
         </Table>
       </div>
-      {/* Hide the manual add-row button for mirrored tables (rows are managed by the source table) */}
-      {!readOnly && !columns.some((c) => c.mirror_source_field) && (
+      {!readOnly && (
         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={addRow}>
           <Plus className="w-3 h-3 mr-1" /> Agregar fila
         </Button>

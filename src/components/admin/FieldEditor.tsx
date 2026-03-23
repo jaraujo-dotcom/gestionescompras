@@ -192,65 +192,6 @@ function SortableColumnRow({
         </Button>
       </div>
 
-      {/* Mirror column config */}
-      <div className="pl-6 border-l-2 border-muted space-y-2">
-        <Label className="text-xs font-medium text-muted-foreground">Espejo de columna (opcional)</Label>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1">
-            <Label className="text-xs">Tabla fuente</Label>
-            <Select
-              value={col.mirror_source_field || '__none__'}
-              onValueChange={(val) => {
-                if (val === '__none__') {
-                  updateCol({ mirror_source_field: undefined, mirror_source_column: undefined });
-                } else {
-                  updateCol({ mirror_source_field: val, mirror_source_column: undefined });
-                }
-              }}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Sin espejo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Sin espejo</SelectItem>
-                {allFieldsForRules
-                  .filter((f) => f.field_type === 'table' && (f.table_schema_json?.length ?? 0) > 0)
-                  .map((f) => (
-                    <SelectItem key={f.field_key} value={f.field_key}>
-                      {f.label || f.field_key}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Columna fuente</Label>
-            <Select
-              value={col.mirror_source_column || '__none__'}
-              disabled={!col.mirror_source_field}
-              onValueChange={(val) => {
-                updateCol({ mirror_source_column: val === '__none__' ? undefined : val });
-              }}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Seleccionar..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">—</SelectItem>
-                {col.mirror_source_field &&
-                  (
-                    allFieldsForRules.find((f) => f.field_key === col.mirror_source_field)
-                      ?.table_schema_json ?? []
-                  ).map((srcCol) => (
-                    <SelectItem key={srcCol.key} value={srcCol.key}>
-                      {srcCol.label || srcCol.key}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
 
       {/* Validation */}
       {col.type !== 'boolean' && col.type !== 'select' && (
